@@ -216,6 +216,9 @@
   .v2-edit:hover{background:#e0e7ff}
   .stdot{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:6px;vertical-align:middle}
 </style>
+<script>/* [ปลูกโดย build_repo.py] เลขรุ่นจาก game.html ที่เดียว
+   ถ้าไม่มีบรรทัดนี้ ท่อส่งขึ้นเว็บกลางจะเงียบทั้งเส้นโดยไม่มีข้อความเตือน */
+var GAME_VERSION = 'V.7.99.46-IX2050-2569.80';</script>
 </head>
 <body>
 
@@ -3844,6 +3847,94 @@ function clsIsP2Survey(r){
   try { return String(((r||{}).payload||{}).gameVersion||'').indexOf('-p2-')>=0; } catch(e){ return false; }
 }
 /* [รวม Dashboard] โหลดข้อมูลการเล่นของนักเรียนทุกห้อง → สรุปคะแนนรายคน (คะแนนเก็บ/สอบ/กาญ 2050) */
+/* ══ [V.7.99.44 · 20 ส.ค. 2569] ตัวรับคำสั่ง "อัปเดตผล" จากเว็บกลาง ═══════════
+   ครูสั่ง: "ควรบันทึกข้อมูลระหว่างเว็บกลางกับเกมอัตโนมัติ" และ
+           "ไม่ควรต้องเข้าหน้าครูในตัวเกมเพื่อส่งคะแนน"
+
+   ปัญหาที่ปิด: ภาค 1 **ไม่มีตัวรับคำสั่งเลย** (ค้นทั้งไฟล์เจอ 0 จุด)
+   ⇒ ปุ่ม 🔄 และการซิงก์อัตโนมัติของเว็บกลางใช้ได้กับภาค 2 ภาคเดียวมาตลอด
+   ⇒ ทุกอย่างของภาค 1 (ใบรายงานผล · ผังตัวชี้วัด · สไลด์ภาพรายด่าน)
+     ออกจากเกมได้ต่อเมื่อครูเปิดหน้าครูในเกมเองเท่านั้น
+     นี่คือเหตุผลที่การ์ดเกมภาค 1 บนหน้าแรก **ไม่มีสไลด์ภาพ** ทั้งที่โค้ดส่งมีมาตั้งแต่ V.7.99.28
+     และเป็นเหตุผลที่ตัวกรองหน้าผลการเรียนรู้ของเว็บกลางมีแต่ภาค 2
+
+   ⚠️ เขียนขึ้นใหม่ในสำนวนของภาค 1 เอง ตามโปรโตคอลเดียวกับภาค 2
+      ไม่ได้คัดลอกโค้ดข้ามเกม (กฎกลางห้าม — ต้องผ่านกระบวนการ Extract)
+      สิ่งที่ตรงกันคือ "ข้อความที่รับส่ง" เท่านั้น: gp2-refresh / -ack / -done
+
+   ต่างจากภาค 2 ตรงไหน: ภาค 1 คิดสถิติ "ทั้งชุดนักเรียนของครู" ทีเดียว
+   ไม่ได้แยกตามห้องเหมือนภาค 2 ⇒ ไม่ต้องกางแท็บห้อง แค่เรียก clsLoadStats()
+   แต่ยังตรวจว่าห้องที่เว็บกลางอ้างถึงเป็นของครูคนนี้จริง ก่อนลงมือ */
+(function(){
+  if(window.__gp1RefreshReady) return;
+  window.__gp1RefreshReady=1;
+  var BUSY=false;
+  try{
+    window.addEventListener('message',function(ev){
+      /* ยาม 1 · คนละต้นทาง = ทิ้งเงียบ (เว็บกลางกับเกมอยู่โดเมนเดียวกัน) */
+      if(!ev||ev.origin!==location.origin) return;
+      var m=ev.data;
+      if(!m||m.gp2!=='gp2-refresh') return;            /* ยาม 2 · รับคำสั่งเดียวเท่านั้น */
+      var rid=m.room||null;
+      var send=function(type,ok,why,n){
+        try{ ev.source&&ev.source.postMessage({ gp2:type, room:rid, ok:!!ok,
+          why:why||null, students:n||0,
+          ver:(function(){ try{ return gpVersion()||null; }catch(e){ return null; } })()
+        },ev.origin); }catch(e){}
+      };
+      var done=function(ok,why,n){ BUSY=false; send('gp2-refresh-done',ok,why,n); };
+      try{
+        /* ยาม 3 · โหมดดูห้องครูท่านอื่น = อ่านอย่างเดียว ห้ามเขียนฐานของเขา
+           (ยามชุดเดียวกับที่ gpSendReports/gpPublishMedia ใช้อยู่แล้ว) */
+        try{ if(clsIsPublicScope()||clsIsPublicRoom()||cls.roRoom||cls.pubSel&&clsPubActive())
+               return done(false,'read-only'); }catch(e){ return done(false,'read-only'); }
+        if(!rid) return done(false,'no-room');
+        if(BUSY) return;                               /* รอบก่อนยังไม่จบ = ไม่เริ่มใหม่ */
+        BUSY=true;
+        /* ตอบรับทันทีที่รับคำสั่งไว้ ต้องมาก่อนการรอสายบูต
+           เว็บกลางใช้สัญญาณนี้แยก "เกมรุ่นเก่าไม่มีตัวรับ" ออกจาก "เกมกำลังทำงานอยู่"
+           ถ้าตอบรับหลังบูตเสร็จ เครื่องที่บูตช้าจะถูกตัดสินว่าเป็นรุ่นเก่าทั้งที่ไม่ใช่ */
+        send('gp2-refresh-ack',true,null,0);
+        var t0=Date.now();
+        var start=function(){
+          /* "ยังบูตไม่เสร็จ" ไม่ใช่ "ไม่มีเซสชันครู" — iframe เพิ่งเปิด
+             กว่า cls.rooms จะมาใช้เวลาไม่แน่นอน จึงรอได้ถึง 12 วิ ก่อนตัดสิน */
+          if(!window.cls||!cls.rooms||!cls.rooms.length){
+            if(Date.now()-t0>12000) return done(false,'no-session');
+            return setTimeout(start,500);
+          }
+          if(!cls.rooms.some(function(r){ return r.id===rid; })) return done(false,'room-not-mine');
+          var n=(cls.students||[]).filter(function(x){ return x.classroom_id===rid; }).length;
+          if(!n) return done(false,'no-students',0);
+          var before=0; try{ before=window.__gp1Published||0; }catch(e){}
+          /* ทำได้แค่สิ่งที่ครูกดเองได้อยู่แล้ว = คิดคะแนนใหม่ทั้งชุด
+             ท่อส่งทั้งสาม (ใบรายงานผล · ผังมาตรฐาน · สไลด์ภาพ) อยู่ท้าย clsLoadStats
+             จึงวิ่งตามมาเองโดยไม่ต้องเรียกแยก */
+          try{ clsLoadStats(); }catch(e){ return done(false,'error'); }
+          /* ตอบว่าสำเร็จจาก "งานเสร็จจริง" ไม่ใช่จากนาฬิกา:
+             __gp1Published ขยับ = clsLoadStats วิ่งถึงท่อส่งแล้ว
+             gpSendReports._busy = false = คิวยิงใบรายงานผลระบายหมดแล้ว */
+          var t1=Date.now();
+          var tick=function(){
+            var pub=0,busy=false;
+            try{ pub=window.__gp1Published||0; }catch(e){}
+            try{ busy=!!gpSendReports._busy; }catch(e){}
+            if(pub>before&&!busy) return done(true,null,n);
+            if(Date.now()-t1>40000)
+              return done(pub>before,pub>before?'timeout-partial':'timeout',n);
+            setTimeout(tick,400);
+          };
+          setTimeout(tick,400);
+        };
+        start();
+      }catch(e){
+        /* ห้ามส่งข้อความ error ดิบกลับ — เว็บกลางเอาไปขึ้นจอครู
+           กฎกลาง: ขึ้นจอครูได้เฉพาะ reason เท่านั้น */
+        done(false,'error');
+      }
+    });
+  }catch(e){}
+})();
 function clsLoadStats(){
   cls.stats=cls.stats||{}; cls.statsReady=false;
   var ids=(cls.students||[]).map(function(s){return s.id;});
@@ -3973,6 +4064,9 @@ function clsLoadStats(){
     try{ gpStdPublish(); }catch(e){}
     /* [V.7.99.28 · เอกสาร 58] ส่งรายการภาพรายด่านให้เว็บกลางทำสไลด์ — จุดนี้จุดเดียวเช่นกัน */
     try{ gpPublishMedia(); }catch(e){}
+    /* [V.7.99.44] ตัวนับ "ท่อส่งวิ่งถึงปลายแล้ว" — ตัวรับคำสั่งจากเว็บกลางใช้ยืนยันว่า
+       งานเสร็จจริง ไม่ใช่เดาจากนาฬิกา (บทเรียน R22-P2 ของภาค 2: ตอบสำเร็จทั้งที่ไม่ได้ส่งอะไร) */
+    try{ window.__gp1Published=(window.__gp1Published||0)+1; }catch(e){}
   }).catch(function(e){
     /* [V.7.99.1] เดิมกลืนความผิดพลาดเงียบ ๆ จนหาสาเหตุไม่เจอ — ตอนนี้พิมพ์ลง console ให้ตรวจสอบได้ (ครูยังไม่เห็นข้อความดิบ) */
     console.error('[clsLoadStats] คำนวณคะแนนไม่สำเร็จ:', (e&&e.message)||e, e&&e.stack);
@@ -4026,7 +4120,32 @@ function gpUnitScores(s){
 }
 function gpComp(code,r){
   if(!r) return null;
-  if(r.st!=='score'||r.level==null) return null;   /* partial/none/ยังไม่พอสรุป = ไม่ส่งแถว (ห้ามส่งระดับเดา) */
+  /* [20 ส.ค. 2569 · ครูเคาะ] เดิม: ด้านที่หลักฐานยังไม่พอสรุประดับ = ไม่ส่งแถวเลย
+     ผลคือเว็บกลางขึ้น "ยังไม่มีเกมวัดด้านนี้" ทั้งที่เกมวัดอยู่ แต่ผลไม่เคยออกจากเกม
+     (การคิดขั้นสูงเป็นด้านเดียวที่ได้รับยกเว้นไม่ต้องนับหลักฐาน จึงเป็นด้านเดียวที่ขึ้น)
+
+     ครูเคาะ: ส่งขึ้นไปด้วย แต่ติดป้ายว่าหลักฐานยังไม่พอ
+       · level = null  → ไม่ฟันธงระดับที่ยังสรุปไม่ได้ (ตรงกับ CBE ที่ห้ามตัดสินจากหลักฐานบาง)
+       · score        → ส่งค่าที่คิดได้จริงไปด้วย ครูจะได้เห็นว่าสะสมมาถึงไหน
+       · evidence     → คง 'scored' เพราะฐานรับแค่ scored/observed/self_report (ห้ามคิดค่าใหม่)
+       · criteria_note→ บอกจำนวนหลักฐานที่มีและที่ต้องการ ให้ครูรู้ว่าขาดอีกเท่าไร */
+  if(r.st!=='score'||r.level==null){
+    var _pct=(r&&r.pct!=null)?r.pct:null, _n=(r&&r.n!=null)?Number(r.n):0;
+    /* ด้านที่เกมนี้ "ไม่ได้วัด" โดยตั้งใจ (ปัจจุบัน = การรวมพลังทำงานเป็นทีม)
+       เดิมไม่ส่งเลย ⇒ เว็บกลางขึ้น "ยังไม่มีเกมวัดด้านนี้" ซึ่งอ่านแล้วเหมือนระบบพัง
+       ความจริงคือเกมเก็บหลักฐานประกอบไว้ครบ (เพื่อนประเมิน/ครูสังเกต) แต่หลัก CBE
+       ห้ามตัดสินระดับจากหลักฐานประกอบอย่างเดียว ⇒ ส่งเหตุผลขึ้นไปให้ครูอ่าน */
+    if(r.noAssess){
+      return { code:code, score:null, level:null, level_label:null, sub_scores:null,
+        evidence:'scored', decided_by:'game', system_level:null, system_score:null,
+        criteria_note:'บทเรียนชุดนี้ยังไม่มีด่านที่วัดด้านนี้โดยตรง'+((r&&r.src)?(' · '+r.src):'') };
+    }
+    if(r.st!=='partial'||(_pct==null&&!_n)) return null;   /* ไม่มีอะไรเลยจริง ๆ = ไม่ส่ง */
+    return { code:code, score:_pct, level:null, level_label:null, sub_scores:null,
+      evidence:'scored', decided_by:'game', system_level:null, system_score:null,
+      criteria_note:'หลักฐานยังไม่พอสรุประดับ — มี '+_n+' ชิ้น ต้องการอย่างน้อย '+
+        ((r&&r.need!=null)?r.need:'-')+' ชิ้น'+((r&&r.src)?(' · '+r.src):'') };
+  }
   /* ครู "ตัดสินระดับเอง" นับเฉพาะตอนที่ระดับต่างจากที่เอนจินคิด — ถ้าครูแค่ยืนยันของเดิมให้เป็น 'game'
      (ข้อกำชับเพิ่มเติม 11 ส.ค. ของเว็บกลาง ที่ภาค 2 เจอเคสจริง) */
   var hasKru=(r.kruFinal!=null);
@@ -4042,10 +4161,19 @@ function gpComp(code,r){
       (subs=subs||{})[d.code||d.label]=d.pct;
     });
   }
+  /* [20 ส.ค. 2569 · ครูสั่งข้อ 5] ส่ง "แหล่งที่มาของคะแนน" ขึ้นไปด้วยทุกด้าน
+     เดิมส่งเฉพาะตัวเลข ⇒ เว็บกลางบอกครูไม่ได้ว่าเลขนี้คิดจากอะไร
+     (ด้านการคิดขั้นสูงเป็นด้านเดียวที่มีแหล่งที่มาขึ้น เพราะเป็นด้านเดียวที่เคยส่งได้)
+     ข้อความ src เป็นของเอนจินอยู่แล้ว ไม่ได้คิดขึ้นใหม่ตรงนี้ — แค่ไม่เคยถูกส่งออก
+     ถ้าครูตัดสินระดับเอง ต่อท้ายให้ชัด ว่าเลขที่เห็นไม่ใช่ของระบบล้วน */
+  var note=(r.src?String(r.src):'')+
+    (byTeacher?((r.src?' · ':'')+'ครูตัดสินระดับเองจากการสังเกต'):'')+
+    ((r.n!=null&&r.need!=null)?((r.src||byTeacher?' · ':'')+'หลักฐาน '+r.n+'/'+r.need+' ชิ้น'):'');
   return { code:code, score:(r.pct!=null?r.pct:null), level:r.level,
     level_label:(CORE6_LVNAME[r.level]||null), sub_scores:subs, evidence:'scored',
     decided_by:byTeacher?'teacher':'game',
-    system_level:byTeacher?sysLv:null, system_score:sysScore };
+    system_level:byTeacher?sysLv:null, system_score:sysScore,
+    criteria_note:(note||null) };
 }
 function gpBuildReport(stu,s){
   var ver=gpVersion(); if(!ver) return null;
@@ -4053,10 +4181,11 @@ function gpBuildReport(stu,s){
   var ach=clsAchLevel(col,CLS_MAX_COLLECTED,CLS_COLLECTED_CUTS);   /* คืน {pct,lv} */
   var done=0; IND_ORDER.forEach(function(k){ if(s.pb&&(k in s.pb)) done++; });
   var comps=[];
-  ['SM','HT','CM','CZ','NS'].forEach(function(k){
+  ['SM','HT','CM','TW','CZ','NS'].forEach(function(k){
     var row=gpComp(k,s.c6&&s.c6[k]); if(row) comps.push(row);
   });
-  /* TW ยังไม่ส่ง — ด่านประเมินการทำงานเป็นทีมกำลังสร้าง (ระยะ 1 เล่นได้แล้ว ยังไม่เก็บหลักฐาน) */
+  /* [20 ส.ค. 2569] ส่งครบ 6 ด้าน — ด้านที่ยังสรุประดับไม่ได้ก็ส่งพร้อมเหตุผล
+     เพื่อไม่ให้เว็บกลางขึ้น "ยังไม่มีเกมวัดด้านนี้" ทั้งที่เกมวัดอยู่ (ดู gpComp) */
   return {
     p_game_code:GAME_CODE, p_game_version:ver, p_student:stu.id, p_run_id:'live',
     p_achievement:{
@@ -4089,7 +4218,8 @@ function gpSendReports(){
     if(GP_SENT[stu.id]===sig) return;              /* ค่าไม่เปลี่ยนจากครั้งก่อน = ไม่ต้องยิงซ้ำ */
     q.push({id:stu.id,body:body,sig:sig});
   });
-  if(!q.length){ gpRepWarn(''); return; }
+  if(!q.length){ gpRepWarn(''); gpSendReports._busy=false; return; }
+  gpSendReports._busy=true;   /* [V.7.99.44] คิวยังไม่ระบาย — ตัวรับคำสั่งจากเว็บกลางใช้ธงนี้รอ */
   /* ยิงทีละใบต่อคิว เว้นจังหวะสั้น ๆ — ห้อง 40 คนก็ไม่ถล่มเซิร์ฟเวอร์และไม่หน่วงหน้าครู
 
      [V.7.99.30 · เอกสาร 64 ข้อ 3] เดิมใบที่ส่งไม่สำเร็จเงียบสนิท — ลง console ครั้งเดียวแล้วจบ
@@ -4135,6 +4265,7 @@ function gpSendReports(){
   })();
   /* สรุปให้ครูเห็นตอนวนครบห้องแล้วเท่านั้น — ไม่ขึ้นทีละใบ ไม่งั้นจอกระพริบทั้งรอบ */
   function gpRepDone(total,ok,fail,partial){
+    gpSendReports._busy=false;   /* [V.7.99.44] คิวระบายหมดแล้ว */
     if(!fail.length&&!partial.length){ gpRepWarn(''); return; }
     var who=function(list){ return list.slice(0,5).map(function(x){
       return '<b>'+esc(nameOf(x.id))+'</b> ('+esc(x.why)+')'; }).join(' · ')
