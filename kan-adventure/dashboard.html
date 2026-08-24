@@ -218,7 +218,7 @@
 </style>
 <script>/* [ปลูกโดย build_repo.py] เลขรุ่นจาก game.html ที่เดียว
    ถ้าไม่มีบรรทัดนี้ ท่อส่งขึ้นเว็บกลางจะเงียบทั้งเส้นโดยไม่มีข้อความเตือน */
-var GAME_VERSION = 'V.7.99.46-IX2050-2569.80';</script>
+var GAME_VERSION = 'V.7.99.49-IX2050-2569.83';</script>
 </head>
 <body>
 
@@ -2277,7 +2277,10 @@ function openClassroomPage(){
   /* [V.7.70 ข้อ 2 ตามที่ครูขอ] กดปุ่ม "ห้องเรียน" เมื่อไร ต้องกลับมาที่ "หน้ารายการห้อง/เพิ่มห้อง" เสมอ
      เดิมถ้าเปิดค้างไว้ที่ตารางคะแนน/รายชื่อ/ตรวจคำตอบเขียนของห้องใดห้องหนึ่ง กดปุ่มแล้วยังค้างอยู่หน้าเดิม
      เหมือนปุ่มกดไม่ติด — ปิดหน้าย่อยที่ค้างทั้งหมดก่อนวาดใหม่ */
-  try{ cls.open=null; cls.openScores=null; cls.openReview=null; }catch(e){}
+  /* [V.7.99.49] เติม openKru — เดิมตกหล่นทั้งที่คอมเมนต์ข้างบนบอกว่า
+     "ปิดหน้าย่อยที่ค้างทั้งหมด" ⇒ แผงครูประเมินค้างจนดูเหมือนปุ่มกดไม่ติด
+     (ภาค 2 มีบั๊กเดียวกันเป๊ะ — แก้พร้อมกันทั้งสองภาค) */
+  try{ cls.open=null; cls.openScores=null; cls.openReview=null; cls.openKru=null; }catch(e){}
   clsInit();
 }
 function closeClassroomPage(){ var pc=$('page-cls'); if(pc)pc.classList.add('hidden'); var rb=document.querySelector('.ro-banner'); if(rb)rb.style.display=''; showPage('v2'); }
@@ -5907,6 +5910,40 @@ var CLS_LV_CLR={6:'#7c3aed',5:'#16a34a',4:'#d97706',3:'#64748b'};
    ⇒ ไม่มีเด็กคนไหนระดับขยับเลย และบั๊กคะแนนเกิน 100% หายไปพร้อมกัน */
 var CLS_MAX_COLLECTED=160, CLS_MAX_BOSS=30;
 var CLS_COLLECTED_CUTS={6:120, 5:105, 4:90, 3:75};
+/* ══ [V.7.99.49 · ครูสั่ง] แถบแท็บในหน้าห้อง — รูปแบบเดียวกับภาค 2 ═══════
+   ครูสั่งให้หน้าจอสองภาคเหมือนกัน ≥90% โดยเน้นรูปแบบภาค 2
+
+   ตรวจแล้วพบว่า **ตารางคะแนนของสองภาคเหมือนกันอยู่แล้ว** (หัวสองชั้น ·
+   กลุ่มผลสัมฤทธิ์/สมรรถนะ · สีประจำด้าน · กดแถวกางรายละเอียด)
+   ความต่างที่เหลือจริงคือ "แถบแท็บ" ซึ่งภาค 2 มีแต่ภาค 1 ไม่มี
+   ⇒ ภาค 1 ใช้ปุ่มเปิดหน้าต่างซ้อนแทน = คนละรูปแบบการใช้งานทั้งที่เนื้อในเหมือนกัน
+
+   ⚠️ เขียนขึ้นใหม่ในสำนวนของภาค 1 เอง ไม่ได้คัดลอกโค้ดจากภาค 2
+      (กฎกลางห้ามคัดลอกโค้ด shared ข้ามเกม) สิ่งที่ตรงกันคือรูปแบบที่ครูเห็น
+   ⚠️ ปุ่มเดิมยังอยู่ — ครูที่ชินกับปุ่มยังกดได้ การถอดของที่ใช้อยู่ออก
+      พร้อมกับเพิ่มของใหม่ คือการบังคับให้เรียนใหม่โดยไม่จำเป็น */
+var CLS1TAB = {
+  KEY: 'cls1_room_tab',
+  get(){ try{ return localStorage.getItem(this.KEY) || 'scores'; }catch(e){ return 'scores'; } },
+  set(v, rid){
+    try{ localStorage.setItem(this.KEY, v); }catch(e){}
+    if (v === 'compare') { try{ clsOpenCompare(rid || cls.openScores || null); }catch(e){} return; }
+    try{ clsRender(); }catch(e){}
+  },
+  barHTML(rid){
+    var t = this.get();
+    var b = function(k, label, tip){
+      return '<button class="btn-ghost cls1-tab-btn' + (t === k ? ' on' : '') + '"'
+        + ' title="' + esc(tip) + '" onclick="CLS1TAB.set(\'' + k + '\',\'' + rid + '\')">'
+        + label + '</button>';
+    };
+    return '<div class="cls1-tab-bar">'
+      + b('scores', '📊 คะแนนรายคน', 'คะแนนเก็บ · คะแนนสอบ · ระดับสมรรถนะ 6 ด้าน')
+      + b('compare', '📊 เทียบผลการประเมิน', 'เทียบผลจากเกม · ครู · เพื่อน · ตนเอง')
+      + '</div>';
+  }
+};
+
 function clsScoresHtml(r){
   var studs=(cls.students||[]).filter(function(s){return s.classroom_id===r.id;})
     .sort(function(a,b){ return (Number(a.student_number)||999)-(Number(b.student_number)||999); });
@@ -5916,6 +5953,8 @@ function clsScoresHtml(r){
      เพราะการคิดขั้นสูงเป็น 1 ใน 6 สมรรถนะอยู่แล้ว — คะแนนรวมและ A·B·C·D ดูได้จากการกดที่ช่อง "คิดขั้นสูง"
      เหลือ 12 คอลัมน์ ตารางจึงโปร่งขึ้นและยังพอดีจอ */
   var NCOL=12, ACH_BG='#fffdf5';
+  /* [V.7.99.49] แถบแท็บอยู่เหนือตาราง — ตำแหน่งเดียวกับภาค 2 */
+  var _tabBar=CLS1TAB.barHTML(r.id);
   var LV_TXT={6:'#fff',5:'#fff',4:'#fff',3:'#fff'};
   var rows=studs.map(function(s,idx){ var t=clsStatOf(s), v=t.v2;
     /* [ข้อ 3] ระดับเป็นป้ายสี: 6 ม่วง · 5 เขียว · 4 ส้ม · 3 เทา */
@@ -5988,6 +6027,7 @@ function clsScoresHtml(r){
     return main+det;
   }).join('');
   return '<div style="border-top:1px dashed var(--line);margin-top:12px;padding-top:12px">'+
+    _tabBar+   /* [V.7.99.49] แถบแท็บเหนือตาราง — ตำแหน่งเดียวกับภาค 2 */
     (cls.statsReady?'':'<div class="muted" style="font-size:12px;margin-bottom:6px"><span class="loading" style="border-color:#2563eb;border-top-color:transparent;width:12px;height:12px"></span> กำลังโหลดคะแนน...</div>')+
     /* [V.7.72 ข้อ 3 ตามที่ครูขอ] ตารางพอดีจอ ไม่มีแถบเลื่อนซ้ายขวา
        เดิม 18 คอลัมน์ทำให้ต้องเลื่อนตลอด — ย้าย A/B/C/D (4 คอลัมน์) ลงไปอยู่ใน "แถวรายละเอียด"
