@@ -218,7 +218,7 @@
 </style>
 <script>/* [ปลูกโดย build_repo.py] เลขรุ่นจาก game.html ที่เดียว
    ถ้าไม่มีบรรทัดนี้ ท่อส่งขึ้นเว็บกลางจะเงียบทั้งเส้นโดยไม่มีข้อความเตือน */
-var GAME_VERSION = 'V.7.99.49-IX2050-2569.83';</script>
+var GAME_VERSION = 'V.7.99.57-IX2050-2569.89';</script>
 </head>
 <body>
 
@@ -619,6 +619,38 @@ var GAME_VERSION = 'V.7.99.49-IX2050-2569.83';</script>
 
 <script>
 "use strict";
+/* [V.7.99.54 · ADR-010 · STD-001] ประตูเดียวของข้อความผิดพลาดบนจอครู
+   กฎ: ขึ้นจอได้เฉพาะข้อความที่ "ระบบเราตั้งใจเขียนให้ครูอ่าน" (reason ภาษาไทย)
+        ข้อความดิบจากฐาน/HTTP/JS ห้ามขึ้นจอเด็ดขาด — ส่งไป console.error แทน
+   ทำไมตัดสินด้วย "มีอักษรไทยไหม": ภาค 1 โยน error สองแบบปนกันในช่องเดียว
+        - ตั้งใจ: throw new Error('ยังไม่ได้ผูกห้องเรียน')            <- ขึ้นจอได้
+        - ดิบ  : throw new Error('HTTP 400 ...') / PGRST202 ...        <- ห้ามขึ้นจอ
+   [Kan2] เตือนไว้ว่าเหมากวาดทั้งหมดคือแก้จนพัง — ประตูนี้จึงปล่อยของที่ถูกผ่าน ไม่ได้ตัดทุกอย่าง */
+/* [V.7.99.56] เลิกเขียนคีย์ != คีย์หายไป — ล้าง cai_gemini_key ที่ครูเคยวางไว้ในเครื่องนี้ทิ้ง
+   (ฟีเจอร์ "ตรวจด้วย Gemini" ถอดออกแล้วตามมติครู 24 ส.ค. · บทเรียนจาก [Kan2]) */
+var GP1_KEY_PURGED = (function () {
+  try {
+    if (localStorage.getItem('cai_gemini_key') != null) {
+      localStorage.removeItem('cai_gemini_key');
+      console.log('[GP1] ล้าง cai_gemini_key ที่ตกค้างในเครื่องนี้แล้ว');
+      return true;
+    }
+  } catch (_) {}
+  return false;
+})();
+
+var GP1_ERR = (function () {
+  var TH  = /[\u0E00-\u0E7F]/;
+  var RAW = /^HTTP\s+\d|PGRST\d|^TypeError|^ReferenceError|^SyntaxError|Failed to fetch|NetworkError|^Gemini HTTP/i;
+  return {
+    say: function (e, fallback) {
+      try { console.error('[GP1]', e); } catch (_) {}
+      var m = String((e && (e.reason || e.message)) || '').trim();
+      if (m && !RAW.test(m) && TH.test(m)) return m;
+      return fallback || 'ระบบตอบกลับผิดพลาด (รายละเอียดอยู่ใน Console)';
+    }
+  };
+})();
 /* ============================================================================
  *  Dashboard สมรรถนะ HOTS — สื่อสารกับ Apps Script v2.21 (endpoint ฝั่งเซิร์ฟเวอร์)
  *  - ไม่มีความลับฝังในไฟล์: ครูกรอกลิงก์+PIN เอง · token อยู่ในหน่วยความจำเท่านั้น
@@ -1273,10 +1305,10 @@ function loadReviewQueue(pendingOnly){
 function reviewListHTML(d){
   if(!d.count) return '<div class="note">ยังไม่มีคำตอบเขียนให้ตรวจ — นักเรียนต้องเล่นด่านกาญ 2050 จนจบและพิมพ์คำตอบสะท้อนคิดก่อน จึงจะปรากฏที่นี่</div>';
   var head='<div class="note" style="margin:0 0 14px">พบ <b>'+d.count+'</b> รายการ · ยังไม่ตรวจ <b style="color:#b45309">'+d.pendingCount+'</b> รายการ<br>'+
-    'ระบบให้คะแนนอัตโนมัติ (heuristic) ไว้ก่อนแล้วทุกช่อง — ครูอ่านคำตอบแล้วปรับเป็นคะแนนของครูได้ จากนั้นกด <b>บันทึกคะแนนครู</b> · คะแนนของครูถือเป็นคะแนนสุดท้าย (ปรนัยจากการเล่น 24 + อัตนัยที่ครูให้ 12 = 36)</div>';
+    'ระบบคำนวณคะแนนเสนอไว้ให้ดู (heuristic) แต่ <b>ไม่เติมลงช่องของครู</b> — ช่องว่าง = ยังไม่ให้คะแนน ครูเลือกเอง จากนั้นกด <b>บันทึกคะแนนครู</b> · คะแนนของครูถือเป็นคะแนนสุดท้าย (ปรนัยจากการเล่น 24 + อัตนัยที่ครูให้ 12 = 36)</div>';
   return head+d.rows.map(function(row,i){ return reviewCardHTML(row,i); }).join('');
 }
-function selOptions(sel){ var o=''; for(var v=0;v<=4;v++) o+='<option value="'+v+'"'+(v===sel?' selected':'')+'>'+v+'</option>'; return o; }
+function selOptions(sel){ var o='<option value=""'+(sel==null?' selected':'')+'>–</option>'; for(var v=0;v<=4;v++) o+='<option value="'+v+'"'+(v===sel?' selected':'')+'>'+v+'</option>'; return o; }
 function reviewCardHTML(row,i){
   var qs=REVIEW_Q.length?REVIEW_Q:['ข้อ 1','ข้อ 2','ข้อ 3'];
   var refl=[row.reflection1,row.reflection2,row.reflection3];
@@ -1287,7 +1319,7 @@ function reviewCardHTML(row,i){
     : '<span class="chip" style="background:#fde68a;color:#7c2d12">● ยังไม่ตรวจ</span>')+'</span>';
   var flagBadge=row.aiFlag==='REVIEW'?'<span class="chip" style="background:#fee2e2;color:#991b1b">⚑ ระบบแนะนำให้ครูดู</span>':(row.aiFlag==='OK'?'<span class="chip ok">ระบบ: ผ่านเบื้องต้น</span>':'');
   var qblocks=qs.map(function(q,k){
-    var def=(tc[k]!=null?tc[k]:(ai[k]!=null?ai[k]:0));
+    var def=(tc[k]!=null?tc[k]:null);   /* [V.7.99.56] ไม่ตั้งต้นด้วยคะแนนเครื่อง/0 */
     var aiLbl=row.aiSuggested?'ระบบแนะนำ':'อัตโนมัติ';
     var aiTxt=ai[k]!=null?(aiLbl+': <b>'+ai[k]+'</b>/4'):(aiLbl+': <span class="muted">—</span>');
     return '<div style="margin:10px 0;padding:10px;border:1px solid var(--line);border-radius:9px;background:#fbfdfe">'+
@@ -1312,7 +1344,10 @@ function reviewCardHTML(row,i){
 function wireReviewCard(row,i){
   var btn=$('rv-'+i+'-save'); if(!btn) return;
   btn.onclick=function(){
-    var t1=Number($('rv-'+i+'-s0').value), t2=Number($('rv-'+i+'-s1').value), t3=Number($('rv-'+i+'-s2').value);
+    /* [V.7.99.56] ช่องว่าง = ยังไม่ให้คะแนน — ของเดิม Number('') = 0 ทำให้บันทึก 0 โดยครูไม่ได้ตั้งใจ */
+    var gv=function(id){ var s=String((($(id)||{}).value)==null?'':($(id)||{}).value).trim(); return s===''?null:Number(s); };
+    var t1=gv('rv-'+i+'-s0'), t2=gv('rv-'+i+'-s1'), t3=gv('rv-'+i+'-s2');
+    if(t1==null||t2==null||t3==null){ toast('ยังให้คะแนนไม่ครบ 3 ข้อ — ช่องที่เว้นว่างจะไม่ถูกบันทึกเป็น 0'); return; }
     var comment=$('rv-'+i+'-c').value;
     btn.disabled=true; btn.innerHTML='<span class="loading"></span> กำลังบันทึก...';
     apiPost({action:'saveTeacherReflectionScore', token:state.token, rowKey:row.rowKey, t1:t1, t2:t2, t3:t3, comment:comment}).then(function(res){
@@ -2039,7 +2074,7 @@ function openClassRepair(username){
   root.querySelector('.modal-bg').onclick=function(e){ if(e.target===root.querySelector('.modal-bg')) root_close(); };
   $('cr-save').onclick=function(){ var val=$('cr-input').value.trim(); if(!val){ $('cr-err').textContent='กรุณากรอกชั้นเรียน'; return; }
     var b=$('cr-save'); b.disabled=true; b.innerHTML='<span class="loading"></span> กำลังบันทึก...';
-    doRepairClass(username,val).then(function(){ toast('แก้ไขชั้นเรียนสำเร็จ · '+username); root_close(); renderV2(); }).catch(function(e){ $('cr-err').textContent=(e&&e.message)||'บันทึกไม่สำเร็จ'; b.disabled=false; b.innerHTML='บันทึกลงชีตผู้ใช้'; console.error(e); }); };
+    doRepairClass(username,val).then(function(){ toast('แก้ไขชั้นเรียนสำเร็จ · '+username); root_close(); renderV2(); }).catch(function(e){ $('cr-err').textContent=GP1_ERR.say(e)||'บันทึกไม่สำเร็จ'; b.disabled=false; b.innerHTML='บันทึกลงชีตผู้ใช้'; console.error(e); }); };
 }
 function openBulkClassRepair(){
   var affected=state.v2.rows.filter(function(r){ return normClass(r.ClassGroup).isDate; });
@@ -2325,7 +2360,7 @@ function clsInit(){
       clsStatus(clsErrBox('ยังไม่ได้วางโครงฐานข้อมูล — เปิด Supabase → SQL Editor → วางไฟล์ supabase_schema.sql แล้วกด Run (ขั้น 1.2 ในคู่มือ) เสร็จแล้วกดปุ่มด้านล่าง')+
         '<div class="card"><button class="btn-primary" onclick="clsInit()" style="background:#1d4ed8">ลองใหม่</button></div>');
     } else {
-      clsStatus(clsErrBox('เชื่อมต่อฐานข้อมูลไม่ได้ ('+ (e&&e.message||'ไม่ทราบสาเหตุ') +') — ตรวจอินเทอร์เน็ตแล้วลองใหม่')+
+      clsStatus(clsErrBox('เชื่อมต่อฐานข้อมูลไม่ได้ ('+ GP1_ERR.say(e,'ไม่ทราบสาเหตุ') +') — ตรวจอินเทอร์เน็ตแล้วลองใหม่')+
         '<div class="card"><button class="btn-primary" onclick="clsInit()" style="background:#1d4ed8">ลองใหม่</button></div>');
     }
   });
@@ -2333,7 +2368,7 @@ function clsInit(){
 /* [ตามคำขอครู V.7.68 ข้อ 5] ลิงก์เข้าห้องพร้อมโค้ด — เปิดเกมแล้วกรอกโค้ดให้อัตโนมัติ (?join=CODE)
    ที่อยู่เกม: ถ้าเปิด Dashboard จากเว็บจริงจะอิงโฟลเดอร์เดียวกัน (dashboard.html → index.html)
    ถ้าเปิดจากไฟล์ในเครื่อง ใช้ที่อยู่โปรดักชันเป็นค่าตั้งต้น */
-var GAME_PUBLIC_URL='https://cai-kan.pages.dev/';
+var GAME_PUBLIC_URL='https://gameplearn.com/kan-adventure/';
 function clsGameUrl(){
   try{
     if(/^https?:$/.test(location.protocol)){
@@ -2421,17 +2456,17 @@ function clsJwtClaims(){ try{ return JSON.parse(atob(cls.sess.access_token.split
 function clsIsRealUrl(){ return /^https?:$/.test(location.protocol); }
 function clsGoogleSignIn(){
   var err=$('cls-g-err'); if(err)err.textContent='';
-  if(!clsIsRealUrl()){ if(err)err.textContent='ใช้ได้เมื่อเปิด Dashboard จากเว็บจริง (เปิดเกมที่ cai-kan.pages.dev แล้วกดปุ่ม 🏫)'; return; }
+  if(!clsIsRealUrl()){ if(err)err.textContent='ใช้ได้เมื่อเปิด Dashboard จากเว็บจริง (เปิดเกมที่ gameplearn.com/kan-adventure แล้วกดปุ่ม 🏫)'; return; }
   location.href=SB_URL+'/auth/v1/authorize?provider=google&redirect_to='+encodeURIComponent(location.origin+location.pathname);
 }
 function clsLinkGoogle(){
-  if(!clsIsRealUrl()){ toast('การผูกบัญชี Google ใช้ได้เมื่อเปิด Dashboard จากเว็บจริง (cai-kan.pages.dev)'); return; }
+  if(!clsIsRealUrl()){ toast('การผูกบัญชี Google ใช้ได้เมื่อเปิด Dashboard จากเว็บจริง (gameplearn.com/kan-adventure)'); return; }
   sbEnsure().then(function(ok){
     /* [20 ส.ค. 2569 · ครูทัก] เดิมขึ้น error ว่า "เริ่มใช้งานก่อน" ซึ่งเป็นทางตัน
        ครูเจอตอนหลัง logout: ไม่มีเซสชัน ⇒ ผูกบัญชีไม่ได้ ⇒ ขึ้น error ทั้งที่ครูแค่อยากเข้าระบบ
        "ผูกบัญชี" กับ "เข้าสู่ระบบ" ต่างกันตรงที่ผูกจะพาข้อมูลเดิมตามไปด้วย
        แต่ถ้าไม่มีเซสชันเลย = ไม่มีข้อมูลเดิมให้พาไป ⇒ เข้าสู่ระบบปกติได้เลย ไม่ต้องขึ้น error */
-    if(!ok){ try{ return clsGoogleSignIn(); }catch(e){ toast('เข้าสู่ระบบไม่สำเร็จ: '+(e&&e.message||'')); return; } }
+    if(!ok){ try{ return clsGoogleSignIn(); }catch(e){ toast('เข้าสู่ระบบไม่สำเร็จ: '+GP1_ERR.say(e)); return; } }
     return fetch(SB_URL+'/auth/v1/user/identities/authorize?provider=google&skip_http_redirect=true&redirect_to='+encodeURIComponent(location.origin+location.pathname),
       {headers:{'apikey':SB_ANON,'Authorization':'Bearer '+cls.sess.access_token}})
       .then(function(r){ return r.json().catch(function(){return null;}); })
@@ -2439,7 +2474,7 @@ function clsLinkGoogle(){
         if(j&&j.url){ location.href=j.url; }
         else toast('เปิดหน้า Google ไม่สำเร็จ: '+((j&&(j.msg||j.message||j.error_description))||'ตรวจว่าเปิด Google Provider + Manual linking ใน Supabase แล้ว (ดูคู่มือ)'));
       });
-  }).catch(function(e){ toast('ผูกบัญชีไม่สำเร็จ: '+(e&&e.message||'')); });
+  }).catch(function(e){ toast('ผูกบัญชีไม่สำเร็จ: '+GP1_ERR.say(e)); });
 }
 function clsStart(){
   var err=$('cls-start-err'); if(err)err.textContent='';
@@ -2539,7 +2574,7 @@ function clsOpenAdmins(){
       '</div><div class="muted" id="ca-st" style="font-size:12px;margin-top:6px"></div></div>';
     document.body.appendChild(wrap);
   })
-  .catch(function(e){ toast('เปิดรายชื่อผู้ดูแลไม่สำเร็จ: '+(e&&e.message||'')+' (ถ้าไม่พบฟังก์ชัน ให้รัน SQL v767)'); });
+  .catch(function(e){ toast('เปิดรายชื่อผู้ดูแลไม่สำเร็จ: '+GP1_ERR.say(e)+' (ถ้าไม่พบฟังก์ชัน ให้รัน SQL v767)'); });
 }
 /* [ใหม่ V.7.69] จัดการ "ห้องเรียนค้างในระบบ" สำหรับผู้ดูแล
    ที่มา: ครูแจ้งว่ามีห้อง ป.4/3 ปี 2569 โผล่ในรายการให้นักเรียนเลือก แต่ไม่ได้ผูกกับบัญชีหรือเครื่องไหนเลย
@@ -2600,7 +2635,7 @@ function clsAllRoomsLoad(){
     b.innerHTML='<div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'+head+body+'</table></div>';
   })
   .catch(function(e){
-    b.innerHTML='<div class="err">เปิดรายการห้องไม่สำเร็จ: '+esc(e&&e.message||'')+'<br><span class="muted" style="font-size:12px">ถ้าขึ้นว่าไม่พบฟังก์ชัน ให้รันไฟล์ supabase_patch_all_v769.sql ใน Supabase ก่อน · ถ้าขึ้นว่าเฉพาะผู้ดูแล ให้ตรวจว่าอีเมลที่เข้าอยู่ตรงกับที่ตั้งไว้ในตาราง app_admins</span></div>';
+    b.innerHTML='<div class="err">เปิดรายการห้องไม่สำเร็จ: '+esc(GP1_ERR.say(e))+'<br><span class="muted" style="font-size:12px">ถ้าขึ้นว่าไม่พบฟังก์ชัน ให้รันไฟล์ supabase_patch_all_v769.sql ใน Supabase ก่อน · ถ้าขึ้นว่าเฉพาะผู้ดูแล ให้ตรวจว่าอีเมลที่เข้าอยู่ตรงกับที่ตั้งไว้ในตาราง app_admins</span></div>';
   });
 }
 function clsAdminRoomAct(id,act){
@@ -2613,7 +2648,7 @@ function clsAdminRoomAct(id,act){
       clsAllRoomsLoad();
       try{ clsAfterAuth(); }catch(e){} /* รีเฟรชรายการห้องของครูด้านหลังด้วย (เผื่อเพิ่งย้ายห้องมาเป็นของตัวเอง) */
     })
-    .catch(function(e){ if(st) st.textContent='❌ '+(e&&e.message||''); });
+    .catch(function(e){ if(st) st.textContent='❌ '+GP1_ERR.say(e); });
 }
 /* ข้อความรายการประเมิน 15 ข้อ — สำเนาจากฝั่งเกม (ตัวเกมกับ Dashboard เป็นคนละสคริปต์ ใช้ตัวแปรร่วมกันไม่ได้)
    แก้ข้อความในเกมเมื่อไร อย่าลืมแก้ที่นี่ให้ตรงกันด้วย ไม่งั้นเลขข้อจะไม่ตรงกับที่นักเรียนเห็น */
@@ -2695,7 +2730,7 @@ function clsOpenSurvey(){
   })
   .catch(function(e){
     var b=document.getElementById('csv-body');
-    if(b) b.innerHTML='<div class="err">โหลดผลประเมินไม่สำเร็จ: '+esc(e&&e.message||'')+'</div>';
+    if(b) b.innerHTML='<div class="err">โหลดผลประเมินไม่สำเร็จ: '+esc(GP1_ERR.say(e))+'</div>';
   });
 }
 
@@ -2860,7 +2895,7 @@ function clsSetAdmin(email,add){
   var st=document.getElementById('ca-st'); if(st) st.textContent='กำลังบันทึก...';
   sbEnsure().then(function(){ return sbFetch('/rest/v1/rpc/rpc_set_admin',{method:'POST',body:JSON.stringify({p_email:String(email||'').trim(),p_add:!!add})}); })
     .then(function(){ var w=document.getElementById('cls-admin-modal'); if(w) w.remove(); toast(add?'เพิ่มผู้ดูแลแล้ว':'ถอนสิทธิ์ผู้ดูแลแล้ว'); clsOpenAdmins(); })
-    .catch(function(e){ if(st) st.textContent='❌ '+(e&&e.message||''); });
+    .catch(function(e){ if(st) st.textContent='❌ '+GP1_ERR.say(e); });
 }
 function clsAfterAuth(){
   /* [V.7.72 ข้อ 7] ดึงรายชื่อโรงเรียน/ชั้นไว้ทำตัวเลือกในกล่องกรอง (เงียบ ๆ ไม่กั้นการเปิดหน้า) */
@@ -2902,7 +2937,7 @@ function clsAfterAuth(){
   .then(function(){ return clsAutoClaim(); })
   .then(function(){ clsRender(); clsLoadStats(); try{ updateAuthBtn(); }catch(e){} })
   .catch(function(e){
-    clsStatus(clsErrBox('โหลดข้อมูลห้องเรียนไม่สำเร็จ: '+(e&&e.message||''))+'<div class="card"><button class="btn-primary" onclick="clsInit()" style="background:#1d4ed8">ลองใหม่</button></div>');
+    clsStatus(clsErrBox('โหลดข้อมูลห้องเรียนไม่สำเร็จ: '+GP1_ERR.say(e))+'<div class="card"><button class="btn-primary" onclick="clsInit()" style="background:#1d4ed8">ลองใหม่</button></div>');
   });
 }
 /* [แก้บั๊กสำคัญ V.7.61] Supabase ตัดผลการอ่านที่ ~1000 แถว/คำขอ (เพดาน max-rows ของเซิร์ฟเวอร์ — ใส่ limit สูงกว่านี้ก็ไม่ช่วย)
@@ -3547,11 +3582,21 @@ function _heuristicScoreReflections(r1, r2, r3) {
   return { s1: a.s, s2: b.s, s3: c.s, flag: flag, model: 'heuristic-v1',
     rationale: '[ตรวจอัตโนมัติแบบเกณฑ์คำสำคัญ] ข้อ1: ' + a.why + ' | ข้อ2: ' + b.why + ' | ข้อ3: ' + c.why + (flag === 'REVIEW' ? ' · มีข้อควรให้ครูตรวจเพิ่ม' : '') };
 }
+/* [V.7.99.56] คืนรายการ "คำสำคัญที่นับได้จริง" เพื่อให้หน้าครูไฮไลต์ให้เห็นว่าเครื่องนับจากตรงไหน
+   เรียงจากคำยาวไปสั้น กันไฮไลต์ซ้อนกัน (เช่น 'ปลูกป่า' ต้องมาก่อน 'ป่า') */
+function _hsMatched(t) {
+  var s = String(t == null ? '' : t), out = [];
+  var push = function (arr, cat) { for (var i = 0; i < arr.length; i++) if (s.indexOf(arr[i]) !== -1) out.push({ w: arr[i], c: cat }); };
+  push(HS_DOMAIN, 'd'); push(HS_MEASURE, 'm'); push(HS_VALUE, 'v'); push(HS_CONNECT, 'c'); push(HS_EFFECT, 'e');
+  out.sort(function (a, b) { return b.w.length - a.w.length; });
+  return out;
+}
+
 
 /* ========== [เฟส 3f] 📝 ตรวจคำตอบเขียน กาญ 2050 (แทนหน้าตรวจใน Dashboard เดิม) ==========
    - คะแนน AI แนะนำ: ใช้ที่เกมตรวจไว้ (heuristic-v1) · แถวเก่าไม่มี → คำนวณสดให้
    - ครูให้คะแนนจริง 0-4 ต่อข้อ + คอมเมนต์ → เก็บลง raw ของ events (คะแนนรวม 36 = ปรนัย 24 + อัตนัย 12)
-   - ✨ ตรวจด้วย Gemini (ตัวเลือก): ครูใส่ API key ครั้งเดียว เก็บในเครื่องครูเท่านั้น */
+   - ตัวช่วยตรวจในเครื่อง (heuristic-v1): ไฮไลต์คำสำคัญ · เกณฑ์ 0-4 · ธงคำตอบซ้ำ · เทียบคำตอบที่ครูเคยให้คะแนน — **เครื่องไม่เติมคะแนนแทนครู** */
 var CLSR_Q=['ข้อ 1 · ปัญหาที่สำคัญที่สุดของกาญจนบุรีปี 2050 คืออะไร เพราะอะไร (ระบุ+เชื่อมโยงปัญหา)',
             'ข้อ 2 · เหตุใดจึงเลือกแผนชุดนี้ อธิบายการจัดลำดับความสำคัญ (ให้เหตุผลเชิงวิพากษ์)',
             'ข้อ 3 · เมื่องบลด/ฝนเพิ่ม ปรับแผนอย่างไร เพราะเหตุใด (ปรับตัวเมื่อสถานการณ์เปลี่ยน)'];
@@ -3568,7 +3613,20 @@ function clsFillReview(){
   var byId={}; studs.forEach(function(x){ byId[x.id]=x; });
   var ids=studs.map(function(x){ return x.id; });
   if(!ids.length){ var b0=box(); if(b0) b0.innerHTML='<div class="muted" style="font-size:13px">ยังไม่มีนักเรียนในห้องนี้</div>'; return; }
-  sbEnsure().then(function(){ return sbFetchAll('/rest/v1/events?kind=eq.capstone&select=id,student_id,created_at,raw&student_id=in.('+ids.join(',')+')'); })
+  /* [V.7.99.57] 🔴 จุดนี้เคยอ่านตาราง events ตรง ๆ — เป็นที่เดียวในหน้าครูที่ไม่ได้กรองภาค 2
+     ของจริงจากฐาน production 25 ส.ค. 2569: capstone ของภาค 2 หลุดเข้ามาแล้ว 1 แถว (1 คน)
+     ⇒ ครูจะเห็นคำตอบของภาค 2 มาให้ตรวจใต้โจทย์ของภาค 1 · ย้ายมาใช้ view เดียวกับหน้าสถิติ
+     (v_events_p1 = left join attempts แล้วตัดเฉพาะแถวที่ game_version มี '-p2-'
+      แถวเก่า 78,908 แถวที่ไม่มี attempt คือของที่ย้ายมาจาก Sheets ถือเป็นภาค 1 — ต้องเก็บไว้) */
+  var _capQ='kind=eq.capstone&select=id,student_id,created_at,raw&student_id=in.('+ids.join(',')+')';
+  sbEnsure().then(function(){
+    return sbFetchAll(clsEvSrc()+_capQ).catch(function(err){
+      if(cls._noP1View) throw err;              /* ถอยแล้วยังพัง = พังจริง ไม่กลืน */
+      cls._noP1View=true;
+      console.warn('[ภาค 1] อ่าน v_events_p1 ไม่ได้ — ถอยไปอ่านตาราง events ตรง (ยังไม่กรองภาค 2)');
+      return sbFetchAll('/rest/v1/events?'+_capQ);
+    });
+  })
   .then(function(rows){
     var groups={}, order=[];
     (rows||[]).forEach(function(rr){
@@ -3580,7 +3638,7 @@ function clsFillReview(){
     });
     var list=order.map(function(k){ var g=groups[k], raw=g.raw;
       var hasAi=(raw.aiScore1!=null&&raw.aiScore1!=='');
-      var ai=hasAi?{s1:Number(raw.aiScore1)||0,s2:Number(raw.aiScore2)||0,s3:Number(raw.aiScore3)||0,flag:raw.aiFlag||'',rationale:raw.aiRationale||'',model:raw.aiModel||'heuristic-v1',live:true}
+      var ai=hasAi?{s1:Number(raw.aiScore1)||0,s2:Number(raw.aiScore2)||0,s3:Number(raw.aiScore3)||0,flag:raw.aiFlag||'',rationale:raw.aiRationale||'',live:true,model:raw.aiModel||'heuristic-v1',live:true}
                   :(function(){ var h=_heuristicScoreReflections(raw.reflection1||'',raw.reflection2||'',raw.reflection3||''); h.live=false; return h; })();
       return { ids:g.ids, names:g.names.join(' , '), att:raw.attemptNo||'', t:g.t,
         raw24:Math.max(0,Math.min(24,Number(raw.rawTotal24)||0)), r:[raw.reflection1||'',raw.reflection2||'',raw.reflection3||''],
@@ -3600,6 +3658,7 @@ function clsFillReview(){
       if(af!==bf) return af-bf;
       return String(a.names).localeCompare(String(b.names),'th');
     });
+    clsPrepReview(list);   /* [V.7.99.56] เตรียมธงคำตอบซ้ำ + คำตอบใกล้เคียงที่ครูเคยให้คะแนน */
     cls._review=list;
     var b=box(); if(!b) return;
     if(!list.length){ b.innerHTML='<div class="muted" style="font-size:13px">ยังไม่มีนักเรียนคนไหนทำด่านกาญ 2050 ในห้องนี้</div>'; return; }
@@ -3607,56 +3666,73 @@ function clsFillReview(){
     var h='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">'+
       '<b style="font-size:14px">📝 ตรวจสอบอัตนัย — คำตอบเขียนด่านกาญ 2050</b>'+
       '<span class="cls-chip" style="background:#fef3c7;color:#92400e">รอยืนยัน '+pending+' / '+list.length+'</span>'+
-      '<span class="muted" style="font-size:11.5px">[V.7.80] คะแนน AI <b>ถูกบันทึกเป็นคะแนนชั่วคราวของนักเรียนแล้ว</b> (ขึ้นป้าย \"รอครูยืนยัน\") — ครูตรวจซ้ำแล้วกด 💾 เพื่อยืนยัน/ปรับ คะแนนครูจะทับคะแนน AI ทันที · ครูให้คะแนนจริง 0-4 ต่อข้อ · '+
+      '<span class="muted" style="font-size:11.5px">คะแนนที่เครื่องคำนวณ <b>ถูกบันทึกเป็นคะแนนชั่วคราวของนักเรียนแล้ว</b> (ขึ้นป้าย \"รอครูยืนยัน\") — แต่ [V.7.99.56] ช่องคะแนนของครู <b>เริ่มเป็นช่องว่างเสมอ</b> — เครื่องไม่เติมให้ (ไม่มีหลักฐาน = ไม่ใช่ 0) · กด 📋 ถ้าอยากใช้ค่าที่เครื่องเสนอเป็นจุดตั้งต้นแล้วปรับเอง · '+
       '<b style="color:#7c3aed">🧠 การคิด</b> เข้าสมรรถนะการคิดขั้นสูง (รวม 36 = เล่นเกม 24 + เขียน 12) · '+
-      '<b style="color:#0369a1">💬 การสื่อสาร</b> เข้าสมรรถนะการสื่อสารแยกต่างหาก (รวม 12) — ให้คะแนนคนละมุม ไม่นับซ้ำกัน · ✨ = ตรวจซ้ำด้วย Gemini</span></div>';
+      '<b style="color:#0369a1">💬 การสื่อสาร</b> เข้าสมรรถนะการสื่อสารแยกต่างหาก (รวม 12) — ให้คะแนนคนละมุม ไม่นับซ้ำกัน</span></div>'+
+      (cls._noP1View?'<div style="font-size:11.5px;color:#7f1d1d;background:#fee2e2;border-radius:7px;padding:5px 9px;margin-bottom:6px">⚠️ <b>ยังไม่ได้กรองข้อมูลภาค 2</b> — ฐานข้อมูลนี้ยังไม่มี view <code>v_events_p1</code> (ยังไม่ได้รัน <code>supabase_patch_all_v7992.sql</code>) ระบบจึงถอยไปอ่านตารางตรง <b>รายการข้างล่างอาจมีคำตอบของภาค 2 ปนอยู่</b></div>':'')+
+      ((typeof GP1_KEY_PURGED!=='undefined'&&GP1_KEY_PURGED)?'<div style="font-size:11.5px;color:#166534;background:#dcfce7;border-radius:7px;padding:5px 9px;margin-bottom:6px">🔑 ล้างคีย์ Gemini ที่เคยเก็บไว้ในเครื่องนี้เรียบร้อยแล้ว — ฟีเจอร์ "ตรวจด้วย AI ภายนอก" ถูกถอดออกตามมติครู</div>':'')+
+      '<div style="font-size:11.5px;color:#475569;margin-bottom:6px"><b>ไฮไลต์ในคำตอบ:</b> <mark style="background:#dcfce7;padding:0 3px;border-radius:3px">คำสำคัญเนื้อหา</mark> <mark style="background:#ede9fe;padding:0 3px;border-radius:3px">คำเชื่อมเหตุผล</mark> <mark style="background:#ffedd5;padding:0 3px;border-radius:3px">คำแสดงผล</mark> — เครื่องนับจากคำเหล่านี้ ครูดูได้ว่านับจากตรงไหน</div>'+
+      '<details style="margin-bottom:8px"><summary style="cursor:pointer;font-size:12px;color:#0369a1;font-weight:700">📋 เกณฑ์ให้คะแนน 0–4 (กดเพื่อกาง)</summary>'+
+        '<div style="white-space:pre-wrap;font-size:12px;background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-top:4px">'+esc(CLSR_RUBRIC)+'</div></details>';
     h+=list.map(function(e,i){
       var stat=e.reviewed?'<span class="cls-chip" style="background:#dcfce7;color:#166534">✅ ตรวจแล้ว</span>'
         :(e.flag==='REVIEW'?'<span class="cls-chip" style="background:#fee2e2;color:#b91c1c">🚩 ควรตรวจใกล้ชิด</span>':'<span class="cls-chip" style="background:#e0e7ff;color:#3730a3">รอตรวจ</span>');
       var qa=CLSR_Q.map(function(q,qi){
         var ans=e.r[qi], aiS=[e.ai.s1,e.ai.s2,e.ai.s3][qi];
-        var tv=[e.t1,e.t2,e.t3][qi]; if(tv==null) tv=aiS;
-        /* ค่าตั้งต้นของช่องการสื่อสาร: ยังไม่เคยให้ = ให้เท่ากับคะแนนการคิดไว้ก่อน ครูปรับได้ (ไม่ปล่อยว่างให้ลืมกรอก) */
-        var cv=[e.c1,e.c2,e.c3][qi]; if(cv==null) cv=tv;
+        /* [V.7.99.56 ①] ห้ามเติมคะแนนให้ครูอัตโนมัติ — ว่างไว้ = ยังไม่ให้คะแนน (กฎครู: ไม่มีหลักฐาน = null ไม่ใช่ 0) */
+        var tv=[e.t1,e.t2,e.t3][qi], cv=[e.c1,e.c2,e.c3][qi];
+        var sm=e.sim&&e.sim[qi];
         return '<div style="background:#fff;border:1px solid var(--line);border-radius:9px;padding:8px 11px;margin-top:6px">'+
           '<div style="font-size:11.5px;color:#475569;font-weight:700">'+esc(q)+'</div>'+
-          '<div style="font-size:13px;margin:4px 0;white-space:pre-wrap">'+(ans?esc(ans):'<span class="muted">(ไม่ได้ตอบ)</span>')+'</div>'+
-          '<div style="display:flex;gap:10px;align-items:center;font-size:12px">'+
-            '<span class="muted">AI แนะนำ: <b style="color:#7c3aed">'+aiS+'</b>/4'+(e.ai.live?'':' <span style="font-size:10px">(คำนวณสด)</span>')+'</span>'+
-            '<label title="คุณภาพของการคิด: ระบุประเด็นถูก · ให้เหตุผล · เชื่อมโยงเหตุ-ผล — คะแนนนี้เข้าสมรรถนะการคิดขั้นสูง (แหล่ง D)">🧠 การคิด <input id="cvw-t'+qi+'-'+i+'" type="number" min="0" max="4" step="1" value="'+tv+'" style="width:52px;padding:3px 6px;border:1.5px solid #cbd5e1;border-radius:7px;font-family:inherit"> /4</label>'+
+          '<div style="font-size:13px;margin:4px 0;white-space:pre-wrap">'+(ans?clsHiAns(ans):'<span class="muted">(ไม่ได้ตอบ)</span>')+'</div>'+
+          (sm?'<div style="font-size:11.5px;color:#0f766e;background:#f0fdfa;border:1px dashed #5eead4;border-radius:7px;padding:4px 8px;margin:3px 0">🎯 ครูเคยให้ <b>'+sm.score+'</b>/4 กับคำตอบใกล้เคียง: «'+esc(String(sm.txt).slice(0,120))+(String(sm.txt).length>120?'…':'')+'»</div>':'')+
+          '<div style="display:flex;gap:10px;align-items:center;font-size:12px;flex-wrap:wrap">'+
+            '<span class="muted" title="คำนวณในเครื่อง จากจำนวนคำสำคัญ · คำเชื่อมเหตุผล · คำแสดงผล — เป็นตัวคัดกรอง ไม่ใช่คะแนน">🔎 เครื่องเสนอ: <b style="color:#7c3aed">'+aiS+'</b>/4'+(e.ai.live?'':' <span style="font-size:10px">(คำนวณสด)</span>')+'</span>'+
+            '<label title="คุณภาพของการคิด: ระบุประเด็นถูก · ให้เหตุผล · เชื่อมโยงเหตุ-ผล — คะแนนนี้เข้าสมรรถนะการคิดขั้นสูง (แหล่ง D) · เว้นว่าง = ยังไม่ให้คะแนน">🧠 การคิด <input id="cvw-t'+qi+'-'+i+'" type="number" min="0" max="4" step="1" placeholder="–" value="'+(tv==null?'':tv)+'" style="width:52px;padding:3px 6px;border:1.5px solid #cbd5e1;border-radius:7px;font-family:inherit"> /4</label>'+
             /* [V.7.70 ข้อ 8] ช่องที่ 2: คุณภาพการสื่อสาร — เข้าสมรรถนะ "การสื่อสาร" ไม่ไปรวมกับการคิด */
-            '<label title="คุณภาพการสื่อสาร: เรียบเรียงเข้าใจง่าย ลำดับความคิดชัด เลือกคำเหมาะกับผู้อ่าน — คะแนนนี้เข้าสมรรถนะการสื่อสาร ไม่นับซ้ำในการคิดขั้นสูง" style="color:#0369a1">💬 การสื่อสาร <input id="cvw-c'+qi+'-'+i+'" type="number" min="0" max="4" step="1" value="'+cv+'" style="width:52px;padding:3px 6px;border:1.5px solid #7dd3fc;border-radius:7px;font-family:inherit"> /4</label>'+
+            '<label title="คุณภาพการสื่อสาร: เรียบเรียงเข้าใจง่าย ลำดับความคิดชัด เลือกคำเหมาะกับผู้อ่าน — เว้นว่างได้ ระบบเก็บเป็นค่าว่าง ไม่ใช่ 0" style="color:#0369a1">💬 การสื่อสาร <input id="cvw-c'+qi+'-'+i+'" type="number" min="0" max="4" step="1" placeholder="–" value="'+(cv==null?'':cv)+'" style="width:52px;padding:3px 6px;border:1.5px solid #7dd3fc;border-radius:7px;font-family:inherit"> /4</label>'+
           '</div></div>';
       }).join('');
       return '<div style="background:#f8fafc;border:1px solid var(--line);border-left:4px solid '+(e.reviewed?'#16a34a':(e.flag==='REVIEW'?'#dc2626':'#6366f1'))+';border-radius:11px;padding:10px 13px;margin-bottom:10px">'+
         '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+
           '<b>'+esc(e.names||'ไม่ทราบชื่อ')+'</b>'+(e.grp?' <span class="cls-chip" style="background:#ede9fe;color:#6d28d9">👥 กลุ่ม</span>':'')+
-          '<span class="muted" style="font-size:11.5px">ครั้งที่ '+esc(String(e.att||'?'))+' · คะแนนเล่นเกม '+e.raw24+'/24</span>'+stat+'</div>'+
+          '<span class="muted" style="font-size:11.5px">ครั้งที่ '+esc(String(e.att||'?'))+' · คะแนนเล่นเกม '+e.raw24+'/24</span>'+stat+
+          (e.dup&&e.dup.length?'<span class="cls-chip" style="background:#fee2e2;color:#b91c1c" title="ข้อความตรงกันทุกตัวอักษรกับของเพื่อน — ครูตรวจสอบเองว่าเป็นงานกลุ่มหรือลอกกัน">🔁 '+esc(e.dup.join(' · '))+'</span>':'')+'</div>'+
         qa+
         '<div style="font-size:11.5px;color:#64748b;margin-top:6px">🤖 '+esc(e.ai.rationale||'')+'</div>'+
         '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:7px">'+
           '<input id="cvw-cm-'+i+'" placeholder="คอมเมนต์ถึงนักเรียน (ไม่บังคับ)" value="'+esc(e.comment||'')+'" style="flex:1;min-width:200px;padding:6px 10px;border:1.5px solid #cbd5e1;border-radius:8px;font-family:inherit;font-size:12.5px">'+
           '<button class="btn-primary" style="background:#16a34a;padding:5px 14px;font-size:12.5px" onclick="clsSaveReview('+i+')">💾 บันทึกคะแนนครู</button>'+
-          '<button class="btn-ghost" style="padding:4px 12px;font-size:12px;color:#7c3aed" onclick="clsGeminiReview('+i+')">✨ ตรวจด้วย Gemini</button>'+
+          '<button class="btn-ghost" style="padding:4px 12px;font-size:12px;color:#7c3aed" title="เติมช่อง 🧠 การคิด ด้วยคะแนนที่เครื่องเสนอ แล้วครูปรับเองได้ — เครื่องไม่บันทึกแทนครู" onclick="clsUseMachine('+i+')">📋 ใช้ค่าที่เครื่องเสนอ ('+e.ai.s1+'/'+e.ai.s2+'/'+e.ai.s3+')</button>'+
         '</div>'+
         '<div id="cvw-st-'+i+'" style="font-size:12px;margin-top:5px"></div>'+
       '</div>';
     }).join('');
     b.innerHTML=h;
   })
-  .catch(function(e){ var b=box(); if(b) b.innerHTML='<div class="err" style="display:block">โหลดคำตอบไม่สำเร็จ: '+esc(e&&e.message||'')+'</div>'; });
+  .catch(function(e){ var b=box(); if(b) b.innerHTML='<div class="err" style="display:block">โหลดคำตอบไม่สำเร็จ: '+esc(GP1_ERR.say(e))+'</div>'; });
 }
 function clsSaveReview(i){
   var e=cls._review&&cls._review[i]; if(!e) return;
-  var g04=function(id){ var v=Number(($(id)||{}).value); if(isNaN(v)) v=0; return Math.max(0,Math.min(4,Math.round(v))); };
-  var t1=g04('cvw-t0-'+i), t2=g04('cvw-t1-'+i), t3=g04('cvw-t2-'+i);
-  var k1=g04('cvw-c0-'+i), k2=g04('cvw-c1-'+i), k3=g04('cvw-c2-'+i); /* [V.7.70] คะแนนการสื่อสาร */
+  /* [V.7.99.56 ①] ช่องว่าง = "ยังไม่ให้คะแนน" ไม่ใช่ 0 — ของเดิม isNaN -> 0 ทำให้กด 💾 เฉย ๆ แล้วได้ 0 */
+  var gNum=function(id){ var el=$(id); if(!el) return null; var s=String(el.value==null?'':el.value).trim(); if(s==='') return null;
+    var v=Number(s); if(isNaN(v)) return null; return Math.max(0,Math.min(4,Math.round(v))); };
+  var t1=gNum('cvw-t0-'+i), t2=gNum('cvw-t1-'+i), t3=gNum('cvw-t2-'+i);
+  var k1=gNum('cvw-c0-'+i), k2=gNum('cvw-c1-'+i), k3=gNum('cvw-c2-'+i); /* [V.7.70] คะแนนการสื่อสาร */
+  var commAll=(k1!=null&&k2!=null&&k3!=null);
+  var stEl0=$('cvw-st-'+i);
+  if(t1==null||t2==null||t3==null){
+    if(stEl0) stEl0.innerHTML='<span style="color:#b91c1c;font-weight:700">⚠️ ยังให้คะแนน 🧠 การคิด ไม่ครบ 3 ข้อ — ช่องที่เว้นว่างจะ<u>ไม่ถูกบันทึกเป็น 0</u> · กรอกให้ครบ หรือกด 📋 ใช้ค่าที่เครื่องเสนอ แล้วปรับเอง</span>';
+    [0,1,2].forEach(function(q){ var el=$('cvw-t'+q+'-'+i); if(el&&String(el.value==null?'':el.value).trim()==='') el.style.borderColor='#dc2626'; });
+    return;
+  }
   var cm=String((($('cvw-cm-'+i)||{}).value)||'').slice(0,900);
   var final36=Math.max(0,Math.min(36,e.raw24+t1+t2+t3));
   var merged=Object.assign({},e.rawFull,{
     teacherScore1:t1,teacherScore2:t2,teacherScore3:t3,teacherComment:cm,
     /* [V.7.70 ข้อ 8] คะแนนการสื่อสารเก็บแยกคีย์ ไม่แตะคีย์เดิม — คะแนน HOTS/finalTotal36 จึงไม่เปลี่ยนแม้แต่นิดเดียว */
-    commScore1:k1,commScore2:k2,commScore3:k3,commTotal12:(k1+k2+k3),
+    /* [V.7.99.56] ยังไม่ให้คะแนนการสื่อสาร = เก็บ null ไม่ใช่ 0 (กฎครู: ไม่มีข้อมูล = null) */
+    commScore1:k1,commScore2:k2,commScore3:k3,commTotal12:(commAll?(k1+k2+k3):null),
     teacherReviewedAt:new Date().toISOString(),teacherReviewedBy:(cls.teacher&&(cls.teacher.email||cls.teacher.display_name))||'ครู',
     teacherReviewPending:false,finalTotal36:final36,finalPercent:Math.round(final36/36*10000)/100,
     aiScore1:e.ai.s1,aiScore2:e.ai.s2,aiScore3:e.ai.s3,aiFlag:e.ai.flag,aiRationale:e.ai.rationale,aiModel:e.ai.model||'heuristic-v1'
@@ -3665,41 +3741,86 @@ function clsSaveReview(i){
   sbEnsure().then(function(){ return sbFetch('/rest/v1/events?id=in.('+e.ids.join(',')+')',{method:'PATCH',body:JSON.stringify({raw:merged})}); })
   .then(function(){
     e.reviewed=true; e.t1=t1; e.t2=t2; e.t3=t3; e.c1=k1; e.c2=k2; e.c3=k3; e.comment=cm; e.rawFull=merged;
-    if(stEl) stEl.innerHTML='<span style="color:#16a34a;font-weight:700">✅ บันทึกแล้ว — การคิดรวม '+final36+'/36 · การสื่อสาร '+(k1+k2+k3)+'/12</span>';
+    if(stEl) stEl.innerHTML='<span style="color:#16a34a;font-weight:700">✅ บันทึกแล้ว — การคิดรวม '+final36+'/36 · การสื่อสาร '+(commAll?((k1+k2+k3)+'/12'):'<span style="color:#92400e">ยังไม่ให้คะแนน (เก็บเป็นค่าว่าง ไม่ใช่ 0)</span>')+'</span>';
     toast('บันทึกคะแนน '+ (e.names||'') +' แล้ว ('+final36+'/36)');
   })
-  .catch(function(err){ if(stEl) stEl.innerHTML='<span style="color:#b91c1c">บันทึกไม่สำเร็จ: '+esc(err&&err.message||'')+' — ถ้าติดสิทธิ์ ให้รัน SQL แพตช์ล่าสุด</span>'; });
+  .catch(function(err){ if(stEl) stEl.innerHTML='<span style="color:#b91c1c">บันทึกไม่สำเร็จ: '+esc(GP1_ERR.say(err))+' — ถ้าติดสิทธิ์ ให้รัน SQL แพตช์ล่าสุด</span>'; });
 }
-function clsGeminiReview(i){
-  var e=cls._review&&cls._review[i]; if(!e) return;
-  var key=''; try{ key=localStorage.getItem('cai_gemini_key')||''; }catch(err){}
-  if(!key){
-    key=prompt('วาง Gemini API key ของครู (ขอฟรีที่ aistudio.google.com/apikey — เก็บไว้ในเครื่องครูเท่านั้น ใส่ครั้งเดียว)')||'';
-    key=key.trim(); if(!key) return;
-    try{ localStorage.setItem('cai_gemini_key',key); }catch(err){}
+/* ===== [V.7.99.56] ตัวช่วยตรวจอัตนัยในเครื่อง — แทนที่ "ตรวจด้วย Gemini" ที่ถอดออกตามมติครู 24 ส.ค. =====
+   ไม่ต่อบริการภายนอก ไม่มีคีย์ ไม่มีเน็ต · deterministic (ข้อความเดิม = ผลเดิมเป๊ะ)
+   หลักการเดียว: **เครื่องเสนอหลักฐาน ครูเป็นคนให้คะแนน** — เครื่องไม่เติมคะแนนลงช่องของครูเอง */
+
+/* (2) ไฮไลต์คำสำคัญที่เครื่องนับได้ ในตัวคำตอบของนักเรียน */
+function clsHiAns(ans){
+  var s = esc(String(ans==null?'':ans));
+  if(!s) return '';
+  var col = { d:'#dcfce7', m:'#dcfce7', v:'#dcfce7', c:'#ede9fe', e:'#ffedd5' };
+  var ms = _hsMatched(ans), used = [];
+  for(var i=0;i<ms.length;i++){
+    var w = ms[i].w, skip = false;
+    for(var j=0;j<used.length;j++){ if(used[j].indexOf(w)!==-1){ skip = true; break; } }
+    if(skip) continue;
+    used.push(w);
+    s = s.split(esc(w)).join('<mark style="background:'+col[ms[i].c]+';padding:0 1px;border-radius:3px">'+esc(w)+'</mark>');
   }
-  var stEl=$('cvw-st-'+i); if(stEl) stEl.innerHTML='<span class="loading" style="width:12px;height:12px;border-color:#7c3aed;border-top-color:transparent"></span> ✨ Gemini กำลังตรวจ...';
-  var prompt2='คุณเป็นผู้ช่วยครูประถม ให้คะแนนคำตอบอัตนัย 3 ข้อของนักเรียน ป.4 ตามเกณฑ์ต่อไปนี้อย่างเคร่งครัด\n'+CLSR_RUBRIC+
-    '\n\nคำตอบข้อ 1: «'+e.r[0]+'»\nคำตอบข้อ 2: «'+e.r[1]+'»\nคำตอบข้อ 3: «'+e.r[2]+'»\n\n'+
-    'ตอบกลับเป็น JSON เท่านั้น รูปแบบ: {"s1":0-4,"s2":0-4,"s3":0-4,"flag":"OK|REVIEW","rationale":"เหตุผลสั้นๆ ภาษาไทยไม่เกิน 3 ประโยค ระบุจุดเด่น/จุดที่ครูควรดูเป็นพิเศษ"}\n'+
-    'ใช้ flag="REVIEW" เมื่อ: คะแนนข้อใดต่ำกว่า 2, ข้อความสั้นผิดปกติ, สงสัยว่าคัดลอก, หรือมีเนื้อหาที่ครูควรใส่ใจ';
-  fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',{
-    method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},
-    body:JSON.stringify({contents:[{parts:[{text:prompt2}]}],generationConfig:{temperature:0,responseMimeType:'application/json'}})
-  }).then(function(r){ return r.text().then(function(t){ if(!r.ok) throw new Error('Gemini HTTP '+r.status+' '+t.slice(0,120)); return JSON.parse(t); }); })
-  .then(function(data){
-    var text=data&&data.candidates&&data.candidates[0]&&data.candidates[0].content&&data.candidates[0].content.parts&&data.candidates[0].content.parts[0]&&data.candidates[0].content.parts[0].text;
-    var out=JSON.parse(text);
-    var c=function(v){ v=Number(v); return isNaN(v)?0:Math.max(0,Math.min(4,Math.round(v))); };
-    e.ai={s1:c(out.s1),s2:c(out.s2),s3:c(out.s3),flag:out.flag==='REVIEW'?'REVIEW':'OK',rationale:String(out.rationale||'').slice(0,900),model:'gemini-2.0-flash',live:true};
-    [0,1,2].forEach(function(qi){ var el=$('cvw-t'+qi+'-'+i); if(el) el.value=[e.ai.s1,e.ai.s2,e.ai.s3][qi]; });
-    if(stEl) stEl.innerHTML='<span style="color:#7c3aed">✨ Gemini: '+e.ai.s1+' / '+e.ai.s2+' / '+e.ai.s3+' — '+esc(e.ai.rationale)+'</span> <span class="muted">(กด 💾 เพื่อบันทึก)</span>';
-  })
-  .catch(function(err){
-    if(/401|403|API key/i.test(String(err&&err.message))){ try{ localStorage.removeItem('cai_gemini_key'); }catch(e2){} }
-    if(stEl) stEl.innerHTML='<span style="color:#b91c1c">Gemini ตรวจไม่สำเร็จ: '+esc(err&&err.message||'')+' (คีย์ผิดจะถูกล้าง — กด ✨ เพื่อใส่ใหม่)</span>';
-  });
+  return s;
 }
+
+/* (1) ปุ่ม "ใช้ค่าที่เครื่องเสนอ" — ครูเป็นคนกดเอง ไม่ใช่ระบบเติมให้ */
+function clsUseMachine(i){
+  var e = cls._review && cls._review[i]; if(!e) return;
+  var v = [e.ai.s1, e.ai.s2, e.ai.s3];
+  for(var q=0;q<3;q++){
+    var el = $('cvw-t'+q+'-'+i);
+    if(el){ el.value = v[q]; el.style.borderColor = '#cbd5e1'; }
+  }
+  var st = $('cvw-st-'+i);
+  if(st) st.innerHTML = '<span class="muted">📋 เติมค่าที่เครื่องเสนอแล้ว — <b>ครูปรับได้ทุกช่อง</b> ก่อนกดบันทึก</span>';
+}
+
+/* (4)(5) เตรียมข้อมูลช่วยตรวจ: ธงคำตอบซ้ำ + คำตอบใกล้เคียงที่ครูเคยให้คะแนนไว้ */
+function clsPrepReview(list){
+  var i, q, j;
+  for(i=0;i<list.length;i++){
+    list[i].dup = []; list[i].sim = [null,null,null];
+    list[i]._kw = [0,1,2].map(function(k){ return _hsMatched(list[i].r[k]).map(function(x){ return x.w; }); });
+    list[i]._nz = [0,1,2].map(function(k){ return _hsNorm(list[i].r[k]); });
+  }
+  /* (4) คำตอบซ้ำกันข้ามคน — ข้อความเหมือนกันเป๊ะและยาวพอ (>=12 ตัวอักษรหลังตัดช่องว่าง) */
+  var idx = {};
+  for(i=0;i<list.length;i++) for(q=0;q<3;q++){
+    var n = list[i]._nz[q]; if(n.length < 12) continue;
+    var k = q+'|'+n; (idx[k] = idx[k] || []).push(i);
+  }
+  Object.keys(idx).forEach(function(k){
+    var g = idx[k]; if(g.length < 2) return;
+    var qq = Number(k.split('|')[0]);
+    g.forEach(function(a){
+      var others = g.filter(function(b){ return b !== a; }).map(function(b){ return list[b].names || 'ไม่ทราบชื่อ'; });
+      list[a].dup.push('ข้อ ' + (qq+1) + ' ซ้ำกับ ' + others.join(' , '));
+    });
+  });
+  /* (5) หาคำตอบที่ครูเคยให้คะแนนไว้ ซึ่งใกล้เคียงที่สุด (Jaccard ของคำสำคัญ >= 0.34) */
+  for(i=0;i<list.length;i++){
+    if(list[i].reviewed) continue;
+    for(q=0;q<3;q++){
+      var ta = list[i]._kw[q]; if(!list[i].r[q] || !ta.length) continue;
+      var best = null;
+      for(j=0;j<list.length;j++){
+        if(j === i || !list[j].reviewed) continue;
+        var tv = [list[j].t1, list[j].t2, list[j].t3][q];
+        if(tv == null || !list[j].r[q]) continue;
+        var tb = list[j]._kw[q], inter = 0, x;
+        for(x=0;x<ta.length;x++) if(tb.indexOf(ta[x]) !== -1) inter++;
+        var uni = ta.length + tb.length - inter, sim = uni ? inter/uni : 0;
+        if(!best || sim > best.sim) best = { sim:sim, txt:list[j].r[q], score:tv };
+      }
+      list[i].sim[q] = (best && best.sim >= 0.34) ? best : null;
+    }
+  }
+  return list;
+}
+
 
 /* ========== [V.7.80 ตามคำสั่งครู ข้อ 4] 🧑‍🏫 ครูประเมินสมรรถนะจากการสังเกต — ครบ 6 สมรรถนะ 19 ด้านย่อย ==========
    เก็บลง surveys (kind='kru_assess') ผ่าน rpc_kru_assess ซึ่งตรวจว่า auth.uid() เป็นครูเจ้าของห้องจริง
@@ -5334,7 +5455,7 @@ function clsOpenSelfAssess(){
   })
   .catch(function(e){
     var b=document.getElementById('csa-body');
-    if(b) b.innerHTML='<div class="err">โหลดผลประเมินตนเองไม่สำเร็จ: '+esc(e&&e.message||'')+'</div>';
+    if(b) b.innerHTML='<div class="err">โหลดผลประเมินตนเองไม่สำเร็จ: '+esc(GP1_ERR.say(e))+'</div>';
   });
 }
 
@@ -6206,13 +6327,13 @@ function clsCreateRoom(){
   }).then(function(){ return clsAfterAuth(); })
   .catch(function(e){
     if(e&&String(e.code)==='23505') return clsCreateRoom(); // join_key ชน (โอกาสน้อยมาก) → สุ่มใหม่
-    if(err)err.textContent='สร้างห้องไม่สำเร็จ: '+(e&&e.message||'');
+    if(err)err.textContent='สร้างห้องไม่สำเร็จ: '+GP1_ERR.say(e);
   });
 }
 function clsToggleRoom(id,active){
   sbEnsure().then(function(){ return sbFetch('/rest/v1/classrooms?id=eq.'+id,{method:'PATCH',body:JSON.stringify({is_active:active==='true'||active===true})}); })
     .then(function(){ return clsAfterAuth(); })
-    .catch(function(e){ toast('แก้ไขไม่สำเร็จ: '+(e&&e.message||'')); });
+    .catch(function(e){ toast('แก้ไขไม่สำเร็จ: '+GP1_ERR.say(e)); });
 }
 /* [แก้ตามครู V.7.65] แก้ไขห้องเรียนเป็นฟอร์มเดียว: ระดับชั้น · ห้องที่ · โรงเรียน · ปีการศึกษา · วิธีเข้าห้อง
    (เดิมเป็น prompt แก้ได้แค่ชื่อห้อง) */
@@ -6264,7 +6385,7 @@ function clsEditRoom(id){
         return sbFetch('/rest/v1/classrooms?id=eq.'+id,{method:'PATCH',body:JSON.stringify({name:body.name,grade:body.grade,school_id:body.school_id})});
       })
       .then(function(){ wrap.remove(); toast('บันทึกข้อมูลห้องเรียนแล้ว'); return clsAfterAuth(); })
-      .catch(function(e){ document.getElementById('cr-save').disabled=false; errEl.textContent='บันทึกไม่สำเร็จ: '+(e&&e.message||''); });
+      .catch(function(e){ document.getElementById('cr-save').disabled=false; errEl.textContent='บันทึกไม่สำเร็จ: '+GP1_ERR.say(e); });
   };
 }
 
@@ -6294,7 +6415,7 @@ function clsOpenMedia(){
   sbEnsure().then(function(){ return sbFetch('/rest/v1/rpc/rpc_get_media',{method:'POST',body:'{}'}); })
     .then(function(rows){ clsMediaRender(rows||[]); })
     .catch(function(e){
-      document.getElementById('clsm-body').innerHTML='<div style="color:#b91c1c;font-size:13px">โหลดสื่อไม่สำเร็จ: '+esc(e&&e.message||'')+
+      document.getElementById('clsm-body').innerHTML='<div style="color:#b91c1c;font-size:13px">โหลดสื่อไม่สำเร็จ: '+esc(GP1_ERR.say(e))+
         '<br>ถ้าขึ้นว่าไม่พบฟังก์ชัน ให้รันไฟล์ SQL แพตช์ล่าสุด (v767) ใน Supabase ก่อนนะครับ</div>';
     });
 }
@@ -6323,7 +6444,7 @@ function clsMediaSave(i){
   sbEnsure().then(function(){ return sbFetch('/rest/v1/rpc/rpc_set_media',{method:'POST',
     body:JSON.stringify({p_key:L[0],p_photos:v('p'),p_youtube:v('y'),p_folder:v('f'),p_credit:v('c')})}); })
   .then(function(){ if(st) st.textContent='✅ บันทึกแล้ว — นักเรียนจะเห็นสื่อนี้ทันทีที่เปิดห้องเรียนรู้'; })
-  .catch(function(e){ if(st) st.textContent='❌ บันทึกไม่สำเร็จ: '+(e&&e.message||'')+' (ถ้าไม่พบฟังก์ชัน ให้รัน SQL v767 ก่อน)'; });
+  .catch(function(e){ if(st) st.textContent='❌ บันทึกไม่สำเร็จ: '+GP1_ERR.say(e)+' (ถ้าไม่พบฟังก์ชัน ให้รัน SQL v767 ก่อน)'; });
 }
 
 /* ---------- รายชื่อนักเรียน ---------- */
@@ -6358,7 +6479,7 @@ function clsFillRoster(){
         '<td><button class="btn-ghost" style="padding:3px 9px;font-size:12px;color:#1d4ed8" onclick="clsEditStudent(\''+esc(s.id)+'\')">✏️ แก้ไข</button> '+
         '<button class="btn-ghost" style="padding:3px 9px;font-size:12px;color:#b91c1c" onclick="clsDelStudent(\''+esc(s.id)+'\')">ลบ</button></td></tr>'; }).join('')+
       '</table>';
-  }).catch(function(e){ var el=$('cls-roster-tbl'); if(el) el.innerHTML='<div class="err" style="display:block">โหลดรายชื่อไม่สำเร็จ: '+esc(e&&e.message||'')+'</div>'; });
+  }).catch(function(e){ var el=$('cls-roster-tbl'); if(el) el.innerHTML='<div class="err" style="display:block">โหลดรายชื่อไม่สำเร็จ: '+esc(GP1_ERR.say(e))+'</div>'; });
 }
 /* [เฟส 3d ตามคำขอ] ครูเจ้าของห้องแก้ข้อมูลนักเรียนได้เอง (เลขที่/ชื่อ/นามสกุล/PIN) — สิทธิ์คุมด้วย RLS ห้องของตัวเองเท่านั้น */
 function clsEditStudent(id){
@@ -6398,7 +6519,7 @@ function clsEditStudent(id){
       sbEnsure().then(function(){ return sbFetch('/rest/v1/students?id=eq.'+id,{method:'PATCH',
         body:JSON.stringify({student_number:no,first_name:fn,last_name:ln,character_name:gn||null,join_pin:pin||null})}); })
       .then(function(){ wrap.remove(); toast('บันทึกการแก้ไข '+fn+' แล้ว'); return clsAfterAuth(); })
-      .catch(function(e){ document.getElementById('ce-save').disabled=false; errEl.textContent='บันทึกไม่สำเร็จ: '+(e&&e.message||''); });
+      .catch(function(e){ document.getElementById('ce-save').disabled=false; errEl.textContent='บันทึกไม่สำเร็จ: '+GP1_ERR.say(e); });
     };
   }
   if('join_pin' in s) openForm(s.join_pin||'');
@@ -6422,7 +6543,7 @@ function clsDeleteStudent(id,name){
     .then(function(left){
       if(left&&left.length){ toast('⚠️ ลบไม่สำเร็จ — โปรดรัน SQL แพตช์ล่าสุด (สิทธิ์ครูจัดการห้องตัวเอง) แล้วลองใหม่'); return; }
       toast('ลบ "'+(name||'')+'" ออกจากห้องแล้ว'); return clsAfterAuth(); })
-    .catch(function(e){ toast('ลบไม่สำเร็จ: '+(e&&e.message||'')+' — ถ้าขึ้นเรื่องสิทธิ์ ให้รัน SQL แพตช์ล่าสุดก่อน'); });
+    .catch(function(e){ toast('ลบไม่สำเร็จ: '+GP1_ERR.say(e)+' — ถ้าขึ้นเรื่องสิทธิ์ ให้รัน SQL แพตช์ล่าสุดก่อน'); });
 }
 /* [ตามคำขอครู] แยกบัญชีกลุ่มเดิมเป็นรายคน — คัดลอกประวัติ/คะแนนเดิมให้สมาชิกทุกคน แล้วเลิกผูกกลุ่ม
    หลังแยก: ป้าย "👥 คู่กับ / ใช้คะแนนร่วมกลุ่ม" หายไป แต่ละคนถือคะแนน-ประวัติของตัวเอง เดินหน้าต่ออิสระ */
@@ -6449,7 +6570,7 @@ function clsSplitGroup(gref){
   if(!confirm('แยกกลุ่ม "'+members.join(' + ')+'" เป็นรายคน?\n\n- สมาชิกทุกคนจะได้สำเนาประวัติการเล่นและคะแนนเดิมของกลุ่มเป็นของตัวเอง\n- ป้าย 👥 และการใช้คะแนนร่วมกลุ่มจะถูกยกเลิก ต่อจากนี้ต่างคนต่างสะสม\n- ย้อนกลับไม่ได้ (ข้อมูลไม่หาย — แค่แยกสำเนา)')) return;
   sbEnsure().then(function(){ return sbFetch('/rest/v1/rpc/rpc_split_group',{method:'POST',body:JSON.stringify({p_group_ref:gref})}); })
   .then(function(n2){ toast('แยกกลุ่มแล้ว — คัดลอกประวัติให้สมาชิก '+(Number(n2)||0)+' คน'); return clsAfterAuth(); })
-  .catch(function(e){ toast('แยกกลุ่มไม่สำเร็จ: '+(e&&e.message||'')+' — ถ้าขึ้นว่าไม่พบฟังก์ชัน ให้รัน SQL แพตช์ล่าสุดก่อน'); });
+  .catch(function(e){ toast('แยกกลุ่มไม่สำเร็จ: '+GP1_ERR.say(e)+' — ถ้าขึ้นว่าไม่พบฟังก์ชัน ให้รัน SQL แพตช์ล่าสุดก่อน'); });
 }
 /* [ตามคำขอครู V.7.64] บัญชีที่ชื่อ 2 คนรวมในแถวเดียว (GroupSize ไม่ได้บันทึกในระบบเดิม) → แยกเป็น 2 คน
    เดาการแบ่งชื่อให้อัตโนมัติจากช่องว่าง (ครูแก้ได้ก่อนกดยืนยัน) · คนที่ 2 ได้สำเนาคะแนน/ประวัติ/เซฟครบ → จำนวนนักเรียน +1 */
@@ -6488,7 +6609,7 @@ function clsSplitNamed(id){
                            p_first2:v('csn-fn2'),p_last2:v('csn-ln2'),p_number2:v('csn-no2')})}); })
     .then(function(){ wrap.remove(); toast('แยกเป็น 2 คนแล้ว — '+v('csn-fn1')+' และ '+v('csn-fn2')); return clsAfterAuth(); })
     .catch(function(e){ document.getElementById('csn-save').disabled=false;
-      errEl.textContent='แยกไม่สำเร็จ: '+(e&&e.message||'')+' — ถ้าขึ้นว่าไม่พบฟังก์ชัน ให้รัน SQL แพตช์ล่าสุด (v764)'; });
+      errEl.textContent='แยกไม่สำเร็จ: '+GP1_ERR.say(e)+' — ถ้าขึ้นว่าไม่พบฟังก์ชัน ให้รัน SQL แพตช์ล่าสุด (v764)'; });
   };
 }
 /* [เฟส 3d ตามคำขอ] ลบห้องถาวร — ยืนยัน 2 ชั้น (พิมพ์โค้ดห้อง) เพราะลบแล้วนักเรียน+ข้อมูลการเล่นทั้งห้องหายถาวร */
@@ -6501,7 +6622,7 @@ function clsDeleteRoom(id){
   if(String(typed).trim().toUpperCase()!==String(r.join_key).toUpperCase()){ toast('โค้ดไม่ตรง — ยังไม่ลบ'); return; }
   sbEnsure().then(function(){ return sbFetch('/rest/v1/classrooms?id=eq.'+id,{method:'DELETE'}); })
   .then(function(){ toast('ลบห้อง '+r.name+' แล้ว'); return clsAfterAuth(); })
-  .catch(function(e){ toast('ลบห้องไม่สำเร็จ: '+(e&&e.message||'')); });
+  .catch(function(e){ toast('ลบห้องไม่สำเร็จ: '+GP1_ERR.say(e)); });
 }
 function clsAddStudent(){
   var err=$('cls-roster-err'); if(err)err.textContent='';
@@ -6511,7 +6632,7 @@ function clsAddStudent(){
   if(!fn){ if(err)err.textContent='กรุณากรอกชื่อ'; return; }
   sbEnsure().then(function(){ return sbFetch('/rest/v1/students',{method:'POST',body:JSON.stringify([{classroom_id:cls.open,student_number:no,first_name:fn,last_name:ln}])}); })
   .then(function(){ ['cls-st-no','cls-st-first','cls-st-last'].forEach(function(id){ var e=$(id); if(e)e.value=''; }); return clsAfterAuth(); })
-  .catch(function(e){ if(err)err.textContent='เพิ่มไม่สำเร็จ: '+(e&&e.message||''); });
+  .catch(function(e){ if(err)err.textContent='เพิ่มไม่สำเร็จ: '+GP1_ERR.say(e); });
 }
 function clsBulkAdd(){
   var err=$('cls-roster-err'); if(err)err.textContent='';
@@ -6529,13 +6650,13 @@ function clsBulkAdd(){
   if(!rows.length){ if(err)err.textContent='อ่านรายชื่อไม่ได้ ตรวจรูปแบบอีกครั้ง'; return; }
   sbEnsure().then(function(){ return sbFetch('/rest/v1/students',{method:'POST',body:JSON.stringify(rows)}); })
   .then(function(){ toast('เพิ่มรายชื่อ '+rows.length+' คนแล้ว'); return clsAfterAuth(); })
-  .catch(function(e){ if(err)err.textContent='เพิ่มไม่สำเร็จ: '+(e&&e.message||''); });
+  .catch(function(e){ if(err)err.textContent='เพิ่มไม่สำเร็จ: '+GP1_ERR.say(e); });
 }
 function clsDelStudent(id){
   if(!confirm('ลบนักเรียนคนนี้ออกจากห้อง?')) return;
   sbEnsure().then(function(){ return sbFetch('/rest/v1/students?id=eq.'+id,{method:'DELETE'}); })
   .then(function(){ return clsAfterAuth(); })
-  .catch(function(e){ toast('ลบไม่สำเร็จ: '+(e&&e.message||'')); });
+  .catch(function(e){ toast('ลบไม่สำเร็จ: '+GP1_ERR.say(e)); });
 }
 function clsBumpCount(d){ if(cls.open){ cls.counts[cls.open]=Math.max(0,(cls.counts[cls.open]||0)+d); } }
 
@@ -6567,7 +6688,7 @@ function clsSignOut(){
   if(b) b.onclick=function(){
     if(clsSignedIn()) return clsSignOut();
     openClassroomPage();
-    setTimeout(function(){ try{ clsGoogleSignIn(); }catch(e){ toast('เข้าสู่ระบบไม่สำเร็จ: '+(e&&e.message||'')); } },60);
+    setTimeout(function(){ try{ clsGoogleSignIn(); }catch(e){ toast('เข้าสู่ระบบไม่สำเร็จ: '+GP1_ERR.say(e)); } },60);
   };
   /* เมนู "⋯ เพิ่มเติม" (เครื่องมือของระบบเดิม) */
   var m=$('btn-more'), mm=$('more-menu');
@@ -6632,7 +6753,7 @@ function clsSaveFeatured(i){
   sbEnsure().then(function(){ return sbFetch('/rest/v1/rpc/rpc_set_featured_game',{method:'POST',
     body:JSON.stringify({p_slot:i,p_title:v('t'),p_url:v('u'),p_icon:v('i')})}); })
   .then(function(){ if(st) st.textContent='✅ บันทึกแล้ว'; loadFeaturedGames(); })
-  .catch(function(e){ if(st) st.textContent='❌ '+(e&&e.message||'')+' (ถ้าไม่พบฟังก์ชัน ให้รัน SQL v767)'; });
+  .catch(function(e){ if(st) st.textContent='❌ '+GP1_ERR.say(e)+' (ถ้าไม่พบฟังก์ชัน ให้รัน SQL v767)'; });
 }
 
 /* ---- ข้อ 9: ปุ่มส่งออก CSV บนแถบบน — อยู่หน้าห้องเรียนให้ส่งออกคะแนนห้องเรียน (ระบบใหม่) ---- */
@@ -6993,7 +7114,7 @@ function indSave(k){
   if(st) st.textContent='กำลังบันทึก...';
   sbEnsure().then(function(){ return sbFetch('/rest/v1/rpc/rpc_set_indicator',{method:'POST',body:JSON.stringify({p_key:k,p_indicator:v,p_note:comps})}); })
     .then(function(){ indData.ind[k]={indicator:v,note:comps}; if(st) st.textContent='✅ บันทึกแล้ว'; })
-    .catch(function(e){ if(st) st.textContent='❌ '+(e&&e.message||'')+' (ถ้าไม่พบฟังก์ชัน ให้รัน SQL v767)'; });
+    .catch(function(e){ if(st) st.textContent='❌ '+GP1_ERR.say(e)+' (ถ้าไม่พบฟังก์ชัน ให้รัน SQL v767)'; });
 }
 
 /* ---------- ผูกปุ่ม ---------- */
