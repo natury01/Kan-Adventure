@@ -218,7 +218,7 @@
 </style>
 <script>/* [ปลูกโดย build_repo.py] เลขรุ่นจาก game.html ที่เดียว
    ถ้าไม่มีบรรทัดนี้ ท่อส่งขึ้นเว็บกลางจะเงียบทั้งเส้นโดยไม่มีข้อความเตือน */
-var GAME_VERSION = 'V.7.99.61-IX2050-2569.93';</script>
+var GAME_VERSION = 'V.7.99.64-IX2050-2569.96';</script>
 </head>
 <body>
 
@@ -4147,7 +4147,12 @@ function clsLoadStats(){
     return lp;
   });
   p.then(function(){
-    for(var k in stats){ var s=stats[k], sum=0; for(var st2 in s.pb) sum+=s.pb[st2]; s.collected=Math.round(sum*100)/100;
+    for(var k in stats){ var s=stats[k], sum=0;
+      /* [V.7.99.62 · คำสั่งครู] ข้าม '8' — คะแนนสอบด่านบอสไม่ใช่คะแนนเก็บอีกต่อไป
+         (ค่าของบอสยังคำนวณแยกอยู่ด้านล่างในตัวแปร s.boss ตามกติกาครั้งที่ 1-2 เหมือนเดิม) */
+      for(var st2 in s.pb){ if(st2==='8') continue; sum+=s.pb[st2]; }
+      s.collected=Math.round(sum*100)/100;
+      s.pbN=0; for(var st3 in s.pb){ if(st3!=='8') s.pbN++; }   /* มีหลักฐานรายด่านสดกี่ด่าน */
       /* [ตรวจสอบข้อ 2] คะแนนสอบ = สูตรชีต Users เดิมเป๊ะ: เฉพาะครั้งที่ 1-2 เลือกสูงสุด (แถวเก่าไม่มีเลขครั้ง → 2 แถวแรกตามเวลา) */
       var bl=s.ev.b||[]; s.bossN=bl.length; s.boss=0;
       var bA=bl.filter(function(r){ return r.att!=null&&r.att!==''&&!isNaN(Number(r.att)); });
@@ -4203,10 +4208,20 @@ function clsIsActive(stu){ return !stu || stu.is_active !== false; }
 function clsActiveStudents(list){ return (list||cls.students||[]).filter(clsIsActive); }
 function clsStatOf(stu){
   var s=(cls.stats&&cls.stats[stu.id])||null;
-  var col=Math.max(s?s.collected:0, Number(stu.collected_score)||0);
+  /* [V.7.99.62 · 🔴 กับดักที่ AUDIT ชี้ไว้ — ถ้าไม่แก้จุดนี้ การแก้ทั้งหมดจะมองไม่เห็นผล]
+     เดิม: Math.max(ค่าที่คำนวณสด, ค่าที่เก็บไว้ในฐาน)
+     ค่าในฐานของเด็ก 97 คนถูกเขียนด้วยโค้ดเก่าที่ "รวมบอสไว้แล้ว" (สเกลเต็ม 160)
+     ⇒ เอามาเทียบกับค่าสดสเกลใหม่ (เต็ม 130) ด้วย Math.max = ค่าเก่าชนะตลอด
+     ⇒ และมันคือการเอา "เลขคนละสเกล" มาเปรียบเทียบกัน ซึ่งผิดตั้งแต่ต้นแม้ไม่มีเรื่องบอส
+     ⛔ ผมไม่แตะฐาน (กติกา "คำนวณคู่" · งานฝั่งฐานเป็นของ [Code])
+     ✅ ฝั่งเกม: มีหลักฐานรายด่านสด (s.pbN>0) ⇒ ใช้ค่าสด · ไม่มี ⇒ ใช้ค่าในฐานแต่ติดป้ายว่าสเกลเก่า
+        ไม่กลืนเงียบ ไม่เดา ไม่แปลงค่าเก่าเอง (จะแปลงได้ต้องรู้แน่ว่าแถวนั้นเขียนด้วยโค้ดรุ่นไหน) */
+  var _fresh=(s&&s.pbN>0);
+  var col=_fresh ? (s.collected||0) : (Number(stu.collected_score)||0);
+  var colOld=!_fresh && (Number(stu.collected_score)||0)>0;   /* จริง = เลขนี้มาจากสเกลเก่า (เต็ม 160) */
   /* [ตรวจสอบข้อ 2] คะแนนสอบ: มีประวัติสอบใน events → ใช้ค่าตามกติกาครั้ง 1-2 (ตรงชีต Users เดิม) · ไม่มี → ใช้คะแนนสรุปที่ย้ายมา */
   var boss=(s&&s.bossN>0)?s.boss:(Number(stu.boss_score)||0);
-  return { collected:col, boss:boss, cap:s?s.cap:0, plays:s?s.plays:0, last:s?s.last:0,
+  return { collected:col, collectedOldScale:colOld, boss:boss, cap:s?s.cap:0, plays:s?s.plays:0, last:s?s.last:0,
     v2:(s&&s.v2)||null, c6:(s&&s.c6)||null, legacy:(s&&s.legacy)||null, shared:!!(s&&s.shared), gmem:(s&&s.gmem)||null,
     gmismatch:(s&&s.gmismatch)||0, has:(s&&s.plays>0)||col>0||boss>0 };
 }
@@ -4302,7 +4317,7 @@ function gpComp(code,r){
 function gpBuildReport(stu,s){
   var ver=gpVersion(); if(!ver) return null;
   var col=Number(s.collected)||0;
-  var ach=clsAchLevel(col,CLS_MAX_COLLECTED,CLS_COLLECTED_CUTS);   /* คืน {pct,lv} */
+  var ach=clsAchLevel(col,CLS_MAX_COLLECTED);   /* [V.7.99.62] เลิกส่ง cuts — กลับไปใช้ % 80/70/60/50 */
   var done=0; IND_ORDER.forEach(function(k){ if(s.pb&&(k in s.pb)) done++; });
   var comps=[];
   ['SM','HT','CM','TW','CZ','NS'].forEach(function(k){
@@ -4317,9 +4332,11 @@ function gpBuildReport(stu,s){
       grade_label:(ach&&ach.lv)?('ระดับ '+ach.lv+' '+(CORE6_LVNAME[ach.lv]||'')):null,
       progress_percent:Math.round(done/IND_ORDER.length*100),
       unit_scores:gpUnitScores(s),
-      criteria_note:'คะแนนเก็บ '+IND_ORDER.length+' ด่าน เต็ม '+CLS_MAX_COLLECTED+
-        ' (คะแนนสอบด่านบอสรวมอยู่ในคะแนนเก็บแล้ว ห้ามบวกซ้ำ) · จุดตัดระดับเป็นคะแนนดิบ '+
-        CLS_COLLECTED_CUTS[6]+'/'+CLS_COLLECTED_CUTS[5]+'/'+CLS_COLLECTED_CUTS[4]+'/'+CLS_COLLECTED_CUTS[3]+
+      /* [V.7.99.62] ข้อความเดิมพูดตรงข้ามกับความจริงใหม่ — ต้องแก้พร้อมกัน ไม่งั้นเว็บกลางอ่านผิด */
+      criteria_note:'คะแนนเก็บ '+IND_SCORED.length+' ด่าน เต็ม '+CLS_MAX_COLLECTED+
+        ' (ไม่รวมคะแนนสอบด่านบอส ซึ่งส่งแยกในช่อง boss) · จุดตัดระดับเป็นเปอร์เซ็นต์ 80/70/60/50 = '+
+        Math.round(CLS_MAX_COLLECTED*0.8)+'/'+Math.round(CLS_MAX_COLLECTED*0.7)+'/'+
+        Math.round(CLS_MAX_COLLECTED*0.6)+'/'+Math.round(CLS_MAX_COLLECTED*0.5)+
         ' · HOTS เกณฑ์ V.2 (A20·B30·C25·D25) · เพดานหลักฐาน 4/8/15 ชิ้น · CM เพดานระดับ 4 · '+
         'แบบประเมินตนเอง/เพื่อน/ครูสังเกต เป็นหลักฐานประกอบ ไม่รวมในคะแนน'
     },
@@ -4450,8 +4467,9 @@ var GP_STD_EVLBL=[['A','คำตอบข้อวิเคราะห์ร�
 /* เกณฑ์การตัดสินระดับผลสัมฤทธิ์ — ผูกกับค่าคงที่จริง จะได้ไม่เพี้ยนเมื่อวันหนึ่งตัวหารเปลี่ยน */
 function gpStdIndCrit(){
   return 'ตัดสินจากคะแนนของด่านที่วัดตัวชี้วัดนี้ (ด่านทั่วไปเต็ม 10 · ด่านปีศาจข้อสอบเต็ม 30) '+
-    'ซึ่งรวมอยู่ในคะแนนเก็บเต็ม '+CLS_MAX_COLLECTED+' ของทั้งบทเรียน · จุดตัดระดับคุณภาพเป็นคะแนนดิบ '+
-    CLS_COLLECTED_CUTS[6]+'/'+CLS_COLLECTED_CUTS[5]+'/'+CLS_COLLECTED_CUTS[4]+'/'+CLS_COLLECTED_CUTS[3]+
+    'ซึ่งรวมอยู่ในคะแนนเก็บเต็ม '+CLS_MAX_COLLECTED+' ของทั้งบทเรียน (ไม่รวมด่านปีศาจข้อสอบ ซึ่งเป็นแบบทดสอบ วัดแยก) · จุดตัดระดับคุณภาพเป็นเปอร์เซ็นต์ 80/70/60/50 = '+
+    Math.round(CLS_MAX_COLLECTED*0.8)+'/'+Math.round(CLS_MAX_COLLECTED*0.7)+'/'+
+    Math.round(CLS_MAX_COLLECTED*0.6)+'/'+Math.round(CLS_MAX_COLLECTED*0.5)+
     ' = ระดับ 6/5/4/3 · เกณฑ์ผ่านของด่านคำถามคือตอบถูกอย่างน้อย 60% ของด่านนั้น (ด่านที่ 1 ไม่มีเกณฑ์ผ่าน) '+
     '· ด่านมินิเกมตัดสินจากผลการปฏิบัติในด่าน';
 }
@@ -5012,7 +5030,7 @@ function clsPublicScoresHtml(){
   if(!rows.length) return '<div class="card" style="margin-top:9px;padding:11px 14px"><span class="muted">ยังไม่มีข้อมูลผู้เรียนในขอบเขตนี้</span></div>';
   var mine=rows.filter(function(r){ return r.is_mine; }).length;
   var body=rows.slice(0,400).map(function(r,i){
-    var a1=clsAchLevel(r.collected, CLS_MAX_COLLECTED, CLS_COLLECTED_CUTS), a2=clsAchLevel(r.boss, CLS_MAX_BOSS);
+    var a1=clsAchLevel(r.collected, CLS_MAX_COLLECTED), a2=clsAchLevel(r.boss, CLS_MAX_BOSS);   /* [V.7.99.62] */
     var pill=function(a,v){ if(!a) return '<span class="muted">–</span>';
       var c=a.lv?CLS_LV_CLR[a.lv]:'#94a3b8';
       return '<b style="display:inline-block;background:'+c+';color:#fff;border-radius:7px;padding:1px 7px;font-size:12px">'+(Math.round(Number(v)*10)/10)+'</b>'+
@@ -5107,12 +5125,16 @@ function clsAchLevel(score, full, cuts){
     lv: v>=cuts[6]?6 : v>=cuts[5]?5 : v>=cuts[4]?4 : v>=cuts[3]?3 : 0 };
   return { pct:Math.round(pct*10)/10, lv: pct>=80?6 : pct>=70?5 : pct>=60?4 : pct>=50?3 : 0 };
 }
-function clsAchCell(score, full, bg, extra, cuts){
+function clsAchCell(score, full, bg, extra, cuts, oldScale){
   var a=clsAchLevel(score, full, cuts);
   var base='text-align:center;background:'+bg+';'+(extra||'');
   if(!a) return '<td style="'+base+'"><span class="muted">–</span></td>';
   var clr=a.lv?CLS_LV_CLR[a.lv]:'#94a3b8';
   var tip=(a.lv?('ระดับ '+a.lv+' '+(CORE6_LVNAME[a.lv]||'')):'ยังไม่ถึงเกณฑ์ (ต่ำกว่า 50%)')+' — '+a.pct+'% ของคะแนนเต็ม '+full;
+  /* [V.7.99.62] เลขที่มาจากสเกลเก่า (เต็ม 160 รวมบอส) — ยังแสดงตามเดิม ไม่ซ่อน ไม่แปลงค่าเอง
+     แต่ต้องบอกครูว่ากำลังดูอะไรอยู่ · ต่อท้าย title ที่มีอยู่แล้ว = ไม่เพิ่มองค์ประกอบบนจอ
+     ⇒ ไม่มีทางแตะ ADR-003 · ค่าเก่าจะถูกคำนวณใหม่ตอน [Code] ทำงานฝั่งฐาน (กติกาคำนวณคู่) */
+  if(oldScale) tip += ' · ⚠️ เลขนี้มาจากฐานข้อมูลที่บันทึกด้วยสเกลเก่า (เต็ม 160 รวมคะแนนด่านบอส) ยังไม่ได้คำนวณใหม่ตามสเกล 130';
   /* [V.7.77 ตามที่ครูสั่ง] ตัดบรรทัด % ออก เหลือคะแนนกับ "สี" ที่บอกระดับ (ตัวเลข % ยังดูได้จาก tooltip) */
   return '<td style="'+base+'" title="'+esc(tip)+'">'+
     '<b style="display:inline-block;min-width:34px;background:'+clr+';color:#fff;border-radius:7px;padding:2px 9px;font-size:12.5px">'+(Math.round(Number(score)*10)/10)+'</b></td>';
@@ -6029,8 +6051,18 @@ var CLS_LV_CLR={6:'#7c3aed',5:'#16a34a',4:'#d97706',3:'#64748b'};
    จะตกจากระดับ 6 เป็น 5 ทันทีทั้งที่ไม่ได้ทำอะไรผิด (และเอกสารที่ครูพิมพ์ไปแล้วกลางภาคจะไม่ตรง)
    ⇒ มติครู: แก้ตัวหารเป็น 160 แต่ "ล็อกจุดตัดระดับเป็นคะแนนดิบชุดเดิม" 120/105/90/75
    ⇒ ไม่มีเด็กคนไหนระดับขยับเลย และบั๊กคะแนนเกิน 100% หายไปพร้อมกัน */
-var CLS_MAX_COLLECTED=160, CLS_MAX_BOSS=30;
-var CLS_COLLECTED_CUTS={6:120, 5:105, 4:90, 3:75};
+/* ── [V.7.99.62 · คำสั่งครู 29 ส.ค. + มติจุดตัด "ทางเลือก ข"] ─────────────────
+   ตัดคะแนนด่านบอสออกจากคะแนนเก็บ: 13 ด่าน × 10 = **130** (เดิม 160 = 130 + บอส 30)
+   จุดตัดระดับกลับไปใช้ **เปอร์เซ็นต์ 80/70/60/50** ซึ่งเป็นทางปกติของ clsAchLevel อยู่แล้ว
+   ⇒ เต็ม 130 หารลงตัวทุกจุดตัด: 104 · 91 · 78 · 65 (ไม่มีเศษให้ปัดเลยสักจุด)
+
+   🔑 ทำไม `CLS_COLLECTED_CUTS` ถึงถูก **ลบทิ้ง** ไม่ใช่แค่เปลี่ยนเลข:
+   ตัวครอบทับชุดนี้ถูกใส่มาตอน V.7.99.8 *เพราะ* เอาบอสยัดเข้าตัวหาร (150→160)
+   แล้วต้องล็อกจุดตัดเป็นคะแนนดิบกันเด็กตกระดับ · พอตัดบอสออก **เหตุผลของมันหายไปทั้งข้อ**
+   ถ้าปล่อยตัวแปรไว้เฉย ๆ วันหนึ่งจะมีคนหยิบกลับมาใช้โดยไม่รู้ที่มา ⇒ ลบให้หมด
+   ผลพลอยได้: คะแนนเก็บกับคะแนนสอบบนหน้าจอเดียวกัน **ใช้กติกาตัดระดับเดียวกันแล้ว**
+   (เดิมคะแนนสอบตัดด้วย % ส่วนคะแนนเก็บตัดด้วยคะแนนดิบ — ไม่สม่ำเสมอ) */
+var CLS_MAX_COLLECTED=130, CLS_MAX_BOSS=30;
 /* ══ [V.7.99.49 · ครูสั่ง] แถบแท็บในหน้าห้อง — รูปแบบเดียวกับภาค 2 ═══════
    ครูสั่งให้หน้าจอสองภาคเหมือนกัน ≥90% โดยเน้นรูปแบบภาค 2
 
@@ -6092,7 +6124,8 @@ function clsScoresHtml(r){
       /* [เอกสาร 48] ปิดการใช้งาน = ยังแสดงครบ ไม่ซ่อน ไม่ลบ — ติดป้ายให้ครูรู้ว่าทำไมไม่อยู่ในยอดรวม */
       '<td><b>'+esc((s.first_name||'')+' '+(s.last_name||''))+'</b>'+(s.character_name?' <span style="font-size:10.5px;color:#7c3aed">🎮 '+esc(s.character_name)+'</span>':'')+grpChip+
         (clsIsActive(s)?'':' <span title="ครูปิดการใช้งานไว้ — ข้อมูลอยู่ครบ แต่ไม่ถูกนับในยอดรวม/ค่าเฉลี่ย/กระดานอันดับ เปิดกลับได้ที่หน้าจัดการห้อง" style="font-size:10.5px;background:#fee2e2;color:#b91c1c;border-radius:6px;padding:1px 6px">⏸ ปิดใช้งาน</span>')+'</td>'+
-      clsAchCell(t.collected, CLS_MAX_COLLECTED, ACH_BG, '', CLS_COLLECTED_CUTS)+
+      /* [V.7.99.62] เลิกส่ง cuts (arg 5 = null) · ส่งธง "สเกลเก่า" เป็น arg 6 แทน */
+      clsAchCell(t.collected, CLS_MAX_COLLECTED, ACH_BG, '', null, t.collectedOldScale)+
       clsAchCell(t.boss, CLS_MAX_BOSS, ACH_BG, 'border-right:2px solid #fde68a;')+
       /* [V.7.71 ข้อ 10] สมรรถนะหลัก 6 ด้าน — คอลัมน์ละด้าน แสดง % + สีตามระดับ · [V.7.77] กดที่ช่องไหน = เห็นคะแนนรายด้านย่อยของด้านนั้น */
       clsCore6Cells(t, s.id)+
@@ -6800,6 +6833,14 @@ function clsExportCsv(){
    สำคัญ: นี่คือ "เลขที่ใช้แสดงผล" เท่านั้น — รหัสด่านจริงในฐานข้อมูล (1,2,3,6,hellfire,mg1,...) ไม่เปลี่ยนแม้แต่ตัวเดียว
    ข้อมูลวิจัยที่เก็บมาแล้วจึงต่อเนื่อง 100% */
 var IND_ORDER=['1','2','6','3','hellfire','mg1','4','5','pilok','mg2','7','mg3','balance2050','8'];
+/* [V.7.99.62 · คำสั่งครู 29 ส.ค.] "ด่านที่คิดคะแนนเก็บ" = ทุกด่านยกเว้นบอส
+   ⛔ ห้ามลบ '8' ออกจาก IND_ORDER เด็ดขาด — IND_ORDER คือ "ลำดับและรายชื่อด่านทั้งหมด"
+      ลบแล้วพังเงียบอย่างน้อย 5 จุด: เลขลำดับด่าน · ยามจำนวนภาพรายด่าน · ความคืบหน้า
+      · ข้อความ "ทั้งบทเรียนทุกด่าน (N ด่าน)" · และขอบเขต ADR-011 (การ์ดสอนเล่น 14 ด่าน)
+   ⇒ ใช้ IND_SCORED เฉพาะการรวมคะแนนและตัวหารเต็มเท่านั้น */
+var IND_SCORED=IND_ORDER.filter(function(k){ return k!=='8'; });   /* 13 ด่าน × 10 = 130 */
+try { if(IND_SCORED.length*10!==CLS_MAX_COLLECTED)
+  console.error('[ภาค 1] ตัวหารคะแนนเก็บไม่ตรงจำนวนด่านที่คิดคะแนน: '+IND_SCORED.length+'×10 ≠ '+CLS_MAX_COLLECTED); } catch(e){}
 var IND_STAGE_NAME={
   '1':'สะพานข้ามแม่น้ำแคว', '2':'สุสานทหารสัมพันธมิตร', '6':'ต้นจามจุรียักษ์', '3':'ถ้ำกระแซ',
   'hellfire':'ช่องเขาขาด', 'mg1':'หอจดหมายเหตุแห่งกาลเวลา (เรียงเหตุการณ์)',
