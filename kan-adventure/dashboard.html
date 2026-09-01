@@ -218,7 +218,7 @@
 </style>
 <script>/* [ปลูกโดย build_repo.py] เลขรุ่นจาก game.html ที่เดียว
    ถ้าไม่มีบรรทัดนี้ ท่อส่งขึ้นเว็บกลางจะเงียบทั้งเส้นโดยไม่มีข้อความเตือน */
-var GAME_VERSION = 'V.7.99.64-IX2050-2569.96';</script>
+var GAME_VERSION = 'V.7.99.68-IX2050-2569.100';</script>
 </head>
 <body>
 
@@ -715,6 +715,30 @@ function apiPost(body){
     state._openCls=true;
     try{ history.replaceState(null,'',location.pathname+'#page=cls'); }catch(e2){}
   }
+  /* [V.7.99.66 · ครูสั่ง 30 ส.ค. "Edge เข้าไม่ได้ ตรวจสอบให้ละเอียด"]
+     เดิมโค้ดอ่านเฉพาะ access_token — **ข้อความบอกสาเหตุที่ Google/Supabase ส่งกลับมาถูกทิ้งทั้งหมด**
+     ผมทดสอบ 5 สถานการณ์แล้วครูเห็นหน้าจอเดียวกันเป๊ะทุกแบบ ⇒ ไล่สาเหตุไม่ได้เลย
+     ตรงนี้เก็บไว้ทั้ง hash และ query (PKCE ส่ง ?code= / ?error= มาที่ query ไม่ใช่ hash) */
+  else {
+    var _h=String(location.hash||''), _q=String(location.search||'');
+    var _pick=function(src,key){ var m=src.match(new RegExp('[#&?]'+key+'=([^&]*)')); return m?decodeURIComponent(m[1].replace(/\+/g,' ')):''; };
+    var _err=_pick(_h,'error')||_pick(_q,'error');
+    var _code=_pick(_q,'code');
+    if(_err){
+      state._oauthErr={ code:_err, desc:_pick(_h,'error_description')||_pick(_q,'error_description'),
+                        sub:_pick(_h,'error_code')||_pick(_q,'error_code') };
+      state._openCls=true;
+      try{ localStorage.setItem('cls_last_oauth_err', JSON.stringify(Object.assign({t:Date.now(),origin:location.origin},state._oauthErr))); }catch(e3){}
+      try{ history.replaceState(null,'',location.pathname+'#page=cls'); }catch(e4){}
+    } else if(_code){
+      /* Supabase ตั้งเป็น PKCE ⇒ ส่ง ?code= มา ซึ่งหน้านี้ยังไม่รองรับ (ไม่ได้สร้าง code_verifier ไว้)
+         บอกให้รู้ตรง ๆ ดีกว่าเงียบแล้วเด้งกลับหน้าเริ่มต้นเหมือนไม่มีอะไรเกิดขึ้น */
+      state._oauthErr={ code:'pkce_not_supported',
+        desc:'ระบบสมาชิกส่งกลับมาแบบ PKCE (?code=) ซึ่งหน้านี้ยังไม่รองรับ — ต้องตั้ง Supabase ให้ใช้ implicit flow' };
+      state._openCls=true;
+      try{ localStorage.setItem('cls_last_oauth_err', JSON.stringify(Object.assign({t:Date.now(),origin:location.origin},state._oauthErr))); }catch(e5){}
+    }
+  }
 }catch(e){} })();
 $('in-url').value = state._hashUrl || loadUrl();
 $('in-user').value = loadUserName() || 'admin';
@@ -734,7 +758,29 @@ function _hasBackendUrl(){ return /^https:\/\/script\.google\.com\/.*\/exec$/.te
 if(!_hasBackendUrl()){
   var _uf=$('url-field'); if(_uf) _uf.style.display='';
   state.readOnly=true; state.token='PUBLIC-VIEW'; state.teacher='';
-  try{ enterApp(); }catch(e){}
+  /* 🔴 [V.7.99.66 · ต้นเหตุ "Chrome ได้ Edge ไม่ได้" — ครูแจ้ง 30 ส.ค.]
+     เดิมบรรทัดนี้เขียนว่า `try{ enterApp(); }catch(e){}` แล้วเรียกทันที
+     แต่จุดนี้อยู่ก่อน `var cls = {...}` ประมาณ 1,500 บรรทัด
+     ⇒ enterApp() → openClassroomPage() → clsInit() → `cls.sess = ...` ตอน cls ยัง undefined
+       โยน TypeError แล้ว **ถูก catch เปล่ากลืนหายไปเงียบ ๆ**
+     ⇒ โทเคนที่เพิ่งได้จาก Google ถูกทิ้ง ครูเห็นแค่หน้า "เริ่มใช้ระบบห้องเรียน"
+
+     ทำไมเจอเฉพาะบางเบราว์เซอร์: บล็อกนี้ทำงานเมื่อ "ไม่มีลิงก์ระบบเก่าเก็บไว้" เท่านั้น
+       · เบราว์เซอร์ที่ครูใช้มานาน มี hots_dash_url ค้าง ⇒ ข้ามบล็อกนี้ ⇒ ใช้ได้ปกติ
+       · เบราว์เซอร์ใหม่ (Edge ที่เพิ่งเปิด) ไม่มีคีย์นี้ ⇒ ตกเข้าบล็อกนี้ ⇒ พังเงียบ
+     ⇒ เลื่อนไปทำหลังสคริปต์ทั้งไฟล์จบ (ตอนนั้น cls ถูกประกาศครบแล้ว) และเลิกกลืน error */
+  setTimeout(function(){
+    try{ enterApp(); }
+    catch(e){
+      try{ console.error('[GP1] enterApp ล้มเหลว', e); }catch(e2){}
+      try{
+        var box=document.getElementById('cls-status')||document.getElementById('cls-main');
+        if(box) box.innerHTML='<div class="card"><div class="err" style="display:block">'+
+          'เปิดหน้าห้องเรียนไม่สำเร็จ ('+String((e&&e.message)||e)+') — ลองรีเฟรชหน้านี้อีกครั้ง '+
+          'ถ้ายังไม่ได้ ให้แจ้งผู้ดูแลพร้อมข้อความนี้</div></div>';
+      }catch(e3){}
+    }
+  }, 0);
 }
 /* โหมดผู้ดู (อ่านอย่างเดียว): ครูดูคะแนนได้โดยไม่ต้องล็อกอิน — ใช้ token สาธารณะ อ่านได้ · เขียนไม่ได้ (ฝั่ง .gs ป้องกันซ้ำอีกชั้น) */
 function doViewerEnter(){
@@ -2285,9 +2331,28 @@ function sbRefresh(){
   return fetch(SB_URL+'/auth/v1/token?grant_type=refresh_token',{method:'POST',
     headers:{'apikey':SB_ANON,'Content-Type':'application/json'},
     body:JSON.stringify({refresh_token:cls.sess.refresh_token})})
-  .then(function(r){ return r.json().catch(function(){return null;}); })
-  .then(function(j){ if(j&&j.access_token){ sbSetSessionFromAuth(j); return true; } cls.sess=null; clsSaveSess(); return false; })
-  .catch(function(){ return false; });
+  .then(function(r){ return r.text().then(function(t){ var j=null; try{ j=t?JSON.parse(t):null; }catch(e){} return {st:r.status,j:j}; }); })
+  .then(function(res){
+    if(res.j&&res.j.access_token){ sbSetSessionFromAuth(res.j); cls._authFail=''; return true; }
+    /* [V.7.99.65 · ครูแจ้ง 30 ส.ค. "Edge เข้าไม่ได้ Chrome ได้"]
+       เดิมบรรทัดนี้เขียนว่า `cls.sess=null; clsSaveSess();` โดยไม่ดูเลยว่าล้มเพราะอะไร
+       ⇒ เน็ตสะดุด/เซิร์ฟเวอร์ 500/เจอหน้า login ของ WiFi = **ลบเซสชันครูทิ้งถาวร**
+       และเพราะ localStorage แยกกันคนละเบราว์เซอร์ เบราว์เซอร์ที่โดนจะออกจากระบบตลอดไป
+       ส่วนอีกตัวยังเข้าได้ — อาการจะดูเหมือน "เบราว์เซอร์นี้ใช้ไม่ได้" ทั้งที่ไม่เกี่ยวกับเบราว์เซอร์
+       ⇒ ทิ้งเซสชันเฉพาะตอนเซิร์ฟเวอร์ปฏิเสธโทเคนจริง ๆ เท่านั้น */
+    var m=String((res.j&&(res.j.error||res.j.error_description||res.j.msg||res.j.message))||'');
+    var denied=(res.st===400||res.st===401)&&/invalid|expired|revoked|not\s*found|already\s*used/i.test(m);
+    if(denied){ cls.sess=null; clsSaveSess(); cls._authFail='denied'; return false; }
+    cls._authFail='network'; return false;   /* เก็บเซสชันไว้ ครั้งหน้าลองใหม่ได้ */
+  })
+  .catch(function(){ cls._authFail='network'; return false; });
+}
+/* [V.7.99.65] เบราว์เซอร์ยอมให้เก็บข้อมูลเว็บไซต์ไหม — ต้องรู้ตรง ๆ ไม่ใช่เดา
+   Edge/Chrome ที่ตั้งค่าบล็อกคุกกี้-ที่เก็บข้อมูล จะโยน error ตรงนี้
+   เดิม clsSaveSess/clsLoadSess กลืน error ทั้งคู่ (catch เปล่า) ⇒ เกมทำเหมือน "ไม่เคยล็อกอิน" เงียบ ๆ */
+function clsStoreOk(){
+  try{ var k='__gp_probe__'; localStorage.setItem(k,'1'); var v=localStorage.getItem(k); localStorage.removeItem(k); return v==='1'; }
+  catch(e){ return false; }
 }
 function sbEnsure(){
   if(!cls.sess) return Promise.resolve(false);
@@ -2352,7 +2417,7 @@ function clsInit(){
     if(!cls.sess) clsLoadSess();
     return sbEnsure().then(function(ok){
       if(ok) return clsAfterAuth();
-      clsShowStart();
+      clsShowStart(clsStartReason());   /* [V.7.99.65] บอกเหตุผลด้วย ไม่ใช่เด้งเฉย ๆ */
     });
   }).catch(function(e){
     cls.schemaOk=false;
@@ -2434,13 +2499,104 @@ function _clsCopyFallback(txt,done){
   }catch(e){ var st=document.getElementById('cs-st'); if(st) st.textContent='คัดลอกอัตโนมัติไม่ได้ — กดค้างที่ข้อความแล้วคัดลอกเองได้เลย'; }
 }
 function clsRecGen(){ var A='ABCDEFGHJKMNPQRSTUVWXYZ23456789',s='KRU-'; for(var i=0;i<8;i++){ s+=A[Math.floor(Math.random()*A.length)]; if(i===3)s+='-'; } return s; }
-function clsShowStart(){
+/* [V.7.99.65] แปลเหตุที่เข้าระบบไม่ได้ ให้เป็นภาษาที่ครูอ่านแล้วทำอะไรต่อได้
+   เจตนา: เปลี่ยน "เข้าไม่ได้เฉย ๆ" ให้เป็น "เข้าไม่ได้เพราะอะไร" — ไล่เหตุได้โดยไม่ต้องเดา */
+/* [V.7.99.66] ชื่อโฮสต์มาตรฐานของเกม — ต้องตรงกับรายชื่อ Redirect URL ใน Supabase
+   ⚠️ ในไฟล์นี้มีสองชื่อปนกันอยู่จริง: CERT_URL ใช้ www. · คู่มือ admin เขียนแบบไม่มี www.
+      ถ้า Supabase อนุญาตแค่ชื่อเดียว อีกชื่อจะล็อกอิน Google ไม่ผ่านและได้ error กลับมา
+      ⇒ เบราว์เซอร์ที่จำคนละชื่อจะได้ผลต่างกัน = อาการ "Chrome ได้ Edge ไม่ได้" */
+var CLS_CANON_HOST='www.gameplearn.com';
+function clsHostWarn(){
+  try{
+    if(!/^https?:$/.test(location.protocol)) return null;
+    var h=location.hostname;
+    if(h===CLS_CANON_HOST) return null;
+    if(h==='localhost'||h==='127.0.0.1') return null;
+    return { now:location.origin, should:location.protocol+'//'+CLS_CANON_HOST+location.pathname };
+  }catch(e){ return null; }
+}
+/* [V.7.99.66] หน้าตรวจสภาพการเข้าสู่ระบบ — ครูเปิดบนเบราว์เซอร์ที่มีปัญหา ถ่ายภาพส่งมาครั้งเดียวจบ
+   เจตนา: เลิกเดา — ให้เครื่องบอกเองว่าติดตรงไหน */
+function clsDiag(){
+  var d=[], ok=function(b){ return b?'✅':'❌'; };
+  d.push(['ที่อยู่เว็บที่เปิดอยู่', location.origin+location.pathname]);
+  var hw=clsHostWarn();
+  d.push(['ชื่อเว็บตรงกับที่ระบบสมาชิกอนุญาต', hw?('❌ ไม่ตรง — ควรเป็น '+hw.should):'✅ ตรง']);
+  d.push(['เบราว์เซอร์ยอมให้เก็บข้อมูลเว็บไซต์', ok(clsStoreOk())]);
+  var ck=false; try{ document.cookie='gp_t=1;SameSite=Lax'; ck=/gp_t=1/.test(document.cookie); document.cookie='gp_t=;Max-Age=0'; }catch(e){}
+  d.push(['เบราว์เซอร์ยอมรับคุกกี้', ok(ck)]);
+  d.push(['ต่ออินเทอร์เน็ตอยู่', ok(navigator.onLine)]);
+  d.push(['มีข้อมูลเข้าระบบเก็บไว้ในเครื่องนี้', ok(!!(function(){try{return localStorage.getItem('sb_cls_sess');}catch(e){return null;}})())]);
+  var le=null; try{ le=JSON.parse(localStorage.getItem('cls_last_oauth_err')||'null'); }catch(e){}
+  d.push(['ข้อผิดพลาดล่าสุดจากการเข้าสู่ระบบ', le? (le.code+' — '+(le.desc||'')+' (ที่ '+(le.origin||'?')+')') : '— ไม่มี —']);
+  d.push(['เบราว์เซอร์', navigator.userAgent.slice(0,110)]);
+  return d;
+}
+function clsDiagHtml(){
+  return '<div class="card" style="max-width:620px;margin:14px auto 0;text-align:left">'+
+    '<div style="font-weight:800;margin-bottom:8px">🩺 ตรวจสภาพการเข้าสู่ระบบของเบราว์เซอร์นี้</div>'+
+    '<div style="font-size:13px;line-height:1.7">'+
+      clsDiag().map(function(r){ return '<div><b>'+esc(r[0])+':</b> '+esc(String(r[1]))+'</div>'; }).join('')+
+    '</div>'+
+    '<button class="btn-ghost" style="margin-top:10px" onclick="clsDiagCopy()">📋 คัดลอกผลตรวจ (ส่งให้ผู้ดูแลระบบ)</button>'+
+    '<div id="cls-diag-st" class="muted" style="font-size:12px;margin-top:6px"></div></div>';
+}
+function clsDiagCopy(){
+  var t=clsDiag().map(function(r){ return r[0]+': '+r[1]; }).join('\n');
+  var done=function(){ var e=document.getElementById('cls-diag-st'); if(e) e.textContent='✅ คัดลอกแล้ว — วางในแชตส่งให้ผู้ดูแลได้เลย'; };
+  try{ if(navigator.clipboard&&navigator.clipboard.writeText) return navigator.clipboard.writeText(t).then(done,function(){}); }catch(e){}
+  try{ var ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); done(); }catch(e){}
+}
+function clsStartReason(){
+  /* [V.7.99.66] เหตุที่ "ระบบสมาชิกตอบกลับมาว่าไม่ผ่าน" ต้องมาก่อนเหตุอื่น เพราะเจาะจงที่สุด */
+  var oe=(window.state&&state._oauthErr)||null;
+  if(oe){
+    var m={ access_denied:'ยังไม่ได้กดอนุญาตที่หน้าบัญชี Google — ลองกดเข้าสู่ระบบใหม่แล้วเลือกบัญชีของครู',
+            pkce_not_supported:'ระบบสมาชิกตั้งค่าคนละแบบกับที่หน้านี้รองรับ — ต้องให้ผู้ดูแลตั้ง Supabase เป็น implicit flow',
+            server_error:'ระบบสมาชิกปลายทางตอบว่าผิดพลาด — มักเกิดจากที่อยู่เว็บนี้ยังไม่อยู่ในรายชื่อที่อนุญาต' };
+    return { t:'เข้าสู่ระบบด้วย Google ไม่สำเร็จ',
+             d:(m[oe.code]||('ระบบสมาชิกตอบกลับว่า: '+(oe.desc||oe.code)))+
+               ' · รหัสที่ได้รับ: '+oe.code+(oe.desc?(' — '+oe.desc):''), diag:true };
+  }
+  var hw=clsHostWarn();
+  if(hw) return { t:'ที่อยู่เว็บที่เปิดอยู่ อาจไม่ใช่ที่อยู่ที่ระบบสมาชิกอนุญาต',
+                  d:'ตอนนี้เปิดอยู่ที่ '+hw.now+' แต่ที่อยู่มาตรฐานของเกมคือ '+hw.should+
+                    ' — การเข้าสู่ระบบด้วย Google จะผ่านเฉพาะที่อยู่ที่อยู่ในรายชื่ออนุญาตเท่านั้น '+
+                    'ลองเปิดด้วยที่อยู่มาตรฐานแล้วเข้าสู่ระบบอีกครั้ง', diag:true };
+  if(!clsStoreOk())
+    return { t:'เบราว์เซอร์นี้ปิดการเก็บข้อมูลเว็บไซต์อยู่',
+             d:'ระบบจำครูไม่ได้เลยเพราะเบราว์เซอร์ไม่ให้เก็บข้อมูล — มักเกิดกับโหมดส่วนตัว (InPrivate/Incognito) หรือการตั้งค่าบล็อกคุกกี้ '+
+               'ลองเปิดแบบหน้าต่างปกติ หรืออนุญาตคุกกี้/ข้อมูลเว็บไซต์ให้ gameplearn.com แล้วเปิดหน้านี้ใหม่' };
+  if(cls._authFail==='network')
+    return { t:'ต่อระบบสมาชิกไม่ได้ชั่วคราว — ยังไม่ได้ออกจากระบบนะ',
+             d:'อินเทอร์เน็ตสะดุดหรือระบบปลายทางไม่ตอบ ข้อมูลเข้าระบบของครูยังอยู่ครบ ไม่ได้ถูกลบ — ต่อเน็ตแล้วกดรีเฟรชหน้านี้อีกครั้งน่าจะเข้าได้เลย' };
+  if(cls._authFail==='denied')
+    return { t:'ระบบขอให้เข้าสู่ระบบใหม่อีกครั้ง',
+             d:'การเข้าระบบครั้งก่อนหมดอายุแล้ว — ถ้าเคยกด "ผูกบัญชี Google" ไว้ ให้กดปุ่ม "เข้าสู่ระบบด้วย Google" ข้างล่างได้เลย ห้องเรียนและคะแนนเดิมอยู่ครบ' };
+  return null;
+}
+function clsShowDiag(){
+  var host=document.getElementById('cls-main'); if(!host) return;
+  if(document.getElementById('cls-diag-box')){ document.getElementById('cls-diag-box').remove(); return; }
+  var w=document.createElement('div'); w.id='cls-diag-box'; w.innerHTML=clsDiagHtml();
+  host.appendChild(w);
+}
+function clsShowStart(reason){
   clsStatus('');
   clsMain(
     '<div class="card" style="max-width:560px;margin:0 auto;text-align:center;padding:26px">'+
+      /* [V.7.99.65] แถบเหตุผล — ขึ้นเฉพาะเมื่อ "เคยเข้าได้แล้วหลุด" ไม่ใช่ครูใหม่ที่เพิ่งเปิดครั้งแรก */
+      (reason ? ('<div style="text-align:left;background:#fef3c7;border:1px solid #f59e0b;border-radius:10px;padding:12px 14px;margin-bottom:16px">'+
+                 '<div style="font-weight:800;color:#92400e;font-size:14px;margin-bottom:4px">⚠️ '+esc(reason.t)+'</div>'+
+                 '<div style="color:#78350f;font-size:13px;line-height:1.55">'+esc(reason.d)+'</div>'+
+                 /* [V.7.99.66] เหตุที่เกี่ยวกับ "เข้าระบบไม่ผ่าน" ให้เปิดหน้าตรวจสภาพได้เลยจากตรงนี้ */
+                 (reason.diag?'<button class="btn-ghost" style="margin-top:10px;font-size:13px" onclick="clsShowDiag()">🩺 ดูผลตรวจสภาพเบราว์เซอร์นี้</button>':'')+
+                 '</div>') : '')+
       '<div style="font-size:44px">🏫</div>'+
       '<h2 style="margin:8px 0 4px">เริ่มใช้ระบบห้องเรียน</h2>'+
-      '<div class="muted" style="font-size:13.5px;margin-bottom:14px">กดปุ่มเดียว ใช้ได้เลย <b>ไม่ต้องสมัครสมาชิก</b> — ระบบจะจำครูไว้ในเบราว์เซอร์เครื่องนี้ และให้<b>โค้ดกู้คืน</b>สำหรับเข้าจากเครื่องอื่น</div>'+
+      /* [V.7.99.67] ข้อความเดิมสัญญา "โค้ดกู้คืนสำหรับเข้าจากเครื่องอื่น" ทั้งที่ UI ถูกถอดไปแล้ว
+         ⇒ เขียนใหม่ให้ตรงกับสิ่งที่ระบบทำได้จริง และชี้ทางถาวร (ผูก Google) ให้ชัดตั้งแต่แรก */
+      '<div class="muted" style="font-size:13.5px;margin-bottom:14px">กดปุ่มเดียว ใช้ได้เลย <b>ไม่ต้องสมัครสมาชิก</b> — ระบบจะจำครูไว้ในเบราว์เซอร์เครื่องนี้<br>อยากเข้าได้จาก<b>ทุกเครื่อง</b> ให้กด <b>"ผูกบัญชี Google"</b> หลังเริ่มใช้งาน</div>'+
       '<input class="cls-in" id="cls-tname" type="text" placeholder="ชื่อครู (เช่น ครูอาคม)" style="width:80%;margin-bottom:12px;text-align:center">'+
       '<button class="btn-primary" id="cls-start" style="width:80%;background:#1d4ed8;font-size:16px" onclick="clsStart()">🚀 เริ่มใช้งาน (ไม่ต้องสมัคร)</button>'+
       '<div class="err" id="cls-start-err" style="margin-top:10px"></div>'+
@@ -2449,6 +2605,14 @@ function clsShowStart(){
       '<div style="font-size:13.5px;font-weight:800;color:#334155;margin-bottom:6px">เคยใช้งานอยู่แล้ว?</div>'+
       '<button class="btn-ghost" style="width:80%;border-color:#93c5fd;color:#1d4ed8" onclick="clsGoogleSignIn()">🔵 เข้าสู่ระบบด้วย Google</button>'+
       '<div class="err" id="cls-g-err" style="margin-top:8px"></div>'+
+      /* [V.7.99.67 · ครูสั่ง 1 ก.ย.] ทางที่สองสำหรับครูที่ "มีห้องเรียนอยู่แล้วแต่ยังไม่เคยผูก Google"
+         เดิมไม่มีปุ่มไหนช่วยได้เลย — ตันสนิท */
+      '<div style="border-top:1px dashed var(--line);margin:16px 0 12px"></div>'+
+      '<div style="font-size:13.5px;font-weight:800;color:#334155;margin-bottom:4px">ยังไม่ได้ผูก Google แต่มีห้องเรียนอยู่ในเครื่องเดิม?</div>'+
+      '<div class="muted" style="font-size:12px;margin-bottom:8px">เปิดหน้าครูที่<b>เครื่องเดิม</b> → กด "ย้ายห้องเรียนไปเครื่องอื่น" → คัดลอกกุญแจมาวางที่นี่</div>'+
+      '<textarea id="cls-claim-key" placeholder="วางกุญแจย้ายห้องเรียนที่นี่" style="width:80%;font-family:monospace;font-size:12px;height:48px;border:1px solid var(--line);border-radius:8px;padding:8px"></textarea>'+
+      '<button class="btn-ghost" id="cls-claim-btn" style="width:80%;margin-top:8px;border-color:#f59e0b;color:#b45309" onclick="clsClaimByKey()">🔑 ย้ายห้องเรียนมาเครื่องนี้</button>'+
+      '<div class="err" id="cls-claim-err" style="margin-top:8px"></div>'+
     '</div>');
 }
 /* [เฟส 3] Google OAuth — ผูกบัญชีถาวร + เข้าสู่ระบบจากเครื่องไหนก็ได้ (ต้องเปิด Google Provider + Manual linking ใน Supabase ก่อน) */
@@ -2496,8 +2660,86 @@ function clsStart(){
     if(err) err.textContent='เริ่มไม่สำเร็จ: '+m;
   });
 }
-/* [เลิกใช้ตามคำขอ] ระบบกู้คืนด้วยโค้ด KRU ถูกถอดออกจาก UI — ครูใช้ "ผูกบัญชี Google" แทน
-   (โค้ดกู้คืนยังถูกสร้างเก็บไว้เงียบ ๆ ในฐานข้อมูลเป็นตาข่ายนิรภัยชั้นหลัง แต่ไม่แสดง/ไม่ต้องใช้) */
+/* [V.7.99.67 · ครูสั่ง 1 ก.ย.] "ครูที่มีห้องเรียนอยู่แล้ว เข้าจากเบราว์เซอร์อื่นไม่ได้ — แก้ให้ด้วย"
+   เดิมโค้ดกู้คืน KRU ถูกถอดออกจาก UI ตามคำขอเก่า **แต่ข้อความบนหน้าเริ่มต้นยังโฆษณาว่ามีอยู่**
+   ⇒ ครูที่ไม่เคยผูกบัญชี Google จึงตันสนิท ไม่มีปุ่มไหนให้กดเลย
+   คืนทางนี้กลับมาในรูปแบบที่ใช้งานได้จริง โดย **ไม่ต้องแก้ SQL**:
+     `rpc_claim_teacher(p_old, p_recovery)` ที่มีอยู่แล้วต้องรู้รหัสบัญชีเดิม ซึ่งเครื่องใหม่ไม่รู้
+     ⇒ รวม "รหัสบัญชี" กับ "โค้ดกู้คืน" เป็นสายเดียว = กุญแจย้ายห้องเรียน
+       เครื่องเดิมคัดลอกให้ · เครื่องใหม่วางแล้วระบบแยกเอง ⇒ เรียก RPC เดิมได้ทันที
+   ⚠️ ทางถาวรยังเป็นการผูกบัญชี Google — อันนี้คือตาข่ายนิรภัยสำหรับคนที่ยังไม่ได้ผูก */
+var CLS_KEY_SEP='.';
+function clsMakeKey(uid, rec){ return String(uid||'')+CLS_KEY_SEP+String(rec||''); }
+function clsParseKey(str){
+  var t=String(str||'').trim().replace(/\s+/g,'');
+  var i=t.indexOf(CLS_KEY_SEP);
+  if(i<8) return null;
+  var uid=t.slice(0,i), rec=t.slice(i+1);
+  /* รหัสบัญชีเป็น uuid · โค้ดกู้คืนขึ้นต้นด้วย KRU- ตามที่ clsRecGen สร้าง */
+  if(!/^[0-9a-fA-F-]{30,}$/.test(uid) || !rec) return null;
+  return { old:uid, rec:rec };
+}
+/* ออกกุญแจของบัญชีปัจจุบัน — ถ้าโค้ดเดิมถูกล้างไปแล้ว (RPC ล้างทิ้งหลังย้าย 1 ครั้ง) ให้ออกใหม่ */
+function clsEnsureKey(){
+  if(!cls.sess||!cls.sess.user_id) return Promise.reject(new Error('ยังไม่ได้เข้าสู่ระบบ'));
+  var have=(cls.teacher&&cls.teacher.recovery_code)||'';
+  if(have) return Promise.resolve(clsMakeKey(cls.sess.user_id, have));
+  var rec=clsRecGen();
+  return sbFetch('/rest/v1/teachers?id=eq.'+cls.sess.user_id,
+      {method:'PATCH', headers:{'Prefer':'return=representation'}, body:JSON.stringify({recovery_code:rec})})
+    .then(function(){ if(cls.teacher) cls.teacher.recovery_code=rec;
+      try{ localStorage.setItem('cls_recovery',rec); }catch(e){}
+      return clsMakeKey(cls.sess.user_id, rec); });
+}
+function clsShowKey(){
+  var box=document.getElementById('cls-key-box'); if(!box) return;
+  box.innerHTML='<span class="loading"></span> กำลังออกกุญแจ...';
+  clsEnsureKey().then(function(k){
+    box.innerHTML=
+      '<div style="background:#fffbeb;border:1px solid #f59e0b;border-radius:10px;padding:12px 14px;margin-top:10px;text-align:left">'+
+        '<div style="font-weight:800;color:#92400e;margin-bottom:6px">🔑 กุญแจย้ายห้องเรียนของครู</div>'+
+        '<textarea readonly id="cls-key-val" style="width:100%;font-family:monospace;font-size:12px;height:52px;'+
+          'border:1px solid #fcd34d;border-radius:8px;padding:8px;background:#fff">'+esc(k)+'</textarea>'+
+        '<button class="btn-primary" style="background:#b45309;margin-top:8px" onclick="clsCopyKey()">📋 คัดลอกกุญแจ</button>'+
+        '<div style="font-size:12px;color:#78350f;line-height:1.6;margin-top:8px">'+
+          '<b>วิธีใช้:</b> เปิดเกมบนเครื่อง/เบราว์เซอร์ใหม่ → กด 🏫 หน้าครู → '+
+          'ตรงหน้าเริ่มต้นมีช่อง <b>"ย้ายห้องเรียนมาเครื่องนี้"</b> → วางกุญแจนี้ → ห้องเรียนและนักเรียนตามมาทั้งหมด<br>'+
+          '⚠️ <b>เก็บเป็นความลับ</b> ใครถือกุญแจนี้ก็ย้ายห้องเรียนของครูได้ · ใช้ได้ครั้งเดียว ย้ายแล้วต้องมาขอกุญแจใหม่ที่นี่<br>'+
+          '💡 ถ้าอยากเข้าได้ทุกเครื่องโดยไม่ต้องใช้กุญแจ ให้กด <b>"ผูกบัญชี Google"</b> ครั้งเดียวจบ</div>'+
+      '</div>';
+  }).catch(function(e){ box.innerHTML='<div class="err" style="display:block">ออกกุญแจไม่สำเร็จ: '+esc(GP1_ERR.say(e))+'</div>'; });
+}
+function clsCopyKey(){
+  var el=document.getElementById('cls-key-val'); if(!el) return;
+  var done=function(){ toast('คัดลอกกุญแจแล้ว — เอาไปวางที่เครื่องใหม่ได้เลย'); };
+  try{ if(navigator.clipboard&&navigator.clipboard.writeText) return navigator.clipboard.writeText(el.value).then(done,function(){ el.select(); document.execCommand('copy'); done(); }); }catch(e){}
+  try{ el.select(); document.execCommand('copy'); done(); }catch(e){}
+}
+/* เครื่องใหม่: วางกุญแจแล้วย้ายห้องเรียนมา */
+function clsClaimByKey(){
+  var inp=document.getElementById('cls-claim-key'), err=document.getElementById('cls-claim-err');
+  var btn=document.getElementById('cls-claim-btn');
+  if(err) err.textContent='';
+  var parsed=clsParseKey(inp&&inp.value);
+  if(!parsed){ if(err) err.textContent='กุญแจไม่ถูกต้อง — ต้องคัดลอกมาทั้งบรรทัดจากเครื่องเดิม (หน้าครู → ย้ายห้องเรียนไปเครื่องอื่น)'; return; }
+  if(btn){ btn.disabled=true; btn.textContent='กำลังย้าย...'; }
+  var fin=function(){ if(btn){ btn.disabled=false; btn.textContent='🔑 ย้ายห้องเรียนมาเครื่องนี้'; } };
+  /* ต้องมีเซสชันก่อน (RPC ให้เฉพาะผู้ที่เข้าสู่ระบบแล้ว) — ยังไม่มีก็สร้างบัญชีชั่วคราวให้ */
+  (cls.sess ? Promise.resolve(true) : sbAnonSignup())
+    .then(function(){ return sbFetch('/rest/v1/rpc/rpc_claim_teacher',{method:'POST',
+        body:JSON.stringify({p_old:parsed.old, p_recovery:parsed.rec})}); })
+    .then(function(cnt){
+      cnt=Number(cnt)||0;
+      if(cnt<=0){ fin(); if(err) err.textContent='ย้ายไม่สำเร็จ — บัญชีเดิมอาจไม่มีห้องเรียนเหลืออยู่ หรือกุญแจถูกใช้ไปแล้ว (กุญแจใช้ได้ครั้งเดียว ขอใหม่ได้ที่เครื่องเดิม)'; return; }
+      toast('ย้ายห้องเรียน '+cnt+' ห้อง มาที่เครื่องนี้แล้ว ✅');
+      return clsAfterAuth();
+    })
+    .catch(function(e){ fin();
+      var m=String((e&&e.message)||'');
+      if(/PGRST202|not find the function/i.test(m)) m='ฐานข้อมูลยังไม่มีฟังก์ชันย้ายห้อง — ให้ผู้ดูแลรันไฟล์ SQL ล่าสุดก่อน';
+      if(err) err.textContent='ย้ายไม่สำเร็จ: '+GP1_ERR.say(e, m);
+    });
+}
 /* [แก้ตามครู V.7.66 ข้อ 3+7] เข้าสู่ระบบ Google ครั้งแรกแล้ว "ห้องเรียนที่เคยสร้างไว้ไม่ขึ้น"
    สาเหตุ: ตอนเริ่มใช้งานแบบไม่สมัคร ระบบสร้างบัญชีชั่วคราวให้ 1 บัญชี ห้องผูกกับบัญชีนั้น พอเข้าด้วย Google จะเป็นคนละบัญชี
    ทางแก้: ย้ายห้องทั้งหมดมาที่บัญชี Google ให้อัตโนมัติ (ยืนยันด้วยโค้ดกู้คืนที่เก็บไว้ในเครื่องนี้ตั้งแต่วันแรก)
@@ -6254,6 +6496,9 @@ function clsRender(){
       '<span style="font-size:20px">💡</span>'+
       '<span style="flex:1;min-width:220px;font-size:13px;color:#1e3a8a">ตอนนี้ข้อมูลห้องเรียนผูกกับเบราว์เซอร์เครื่องนี้ชั่วคราว — <b>เข้าสู่ระบบด้วย Google เพื่อให้ข้อมูลอยู่ถาวร</b> และเปิดดูได้จากทุกเครื่อง</span>'+
       '<button class="btn-primary" style="background:#1d4ed8;padding:8px 16px" onclick="clsLinkGoogle()" title="ผูกบัญชี Google เข้ากับห้องเรียนที่ครูสร้างไว้แล้ว — ห้องและนักเรียนตามไปด้วยทั้งหมด">🔗 ผูกบัญชี Google ให้ถาวร</button>'+
+      /* [V.7.99.67] ทางสำรองสำหรับครูที่ยังไม่อยากผูก Google — ย้ายด้วยกุญแจ */
+      '<button class="btn-ghost" style="padding:8px 14px;border-color:#f59e0b;color:#b45309" onclick="clsShowKey()">🔑 ย้ายห้องเรียนไปเครื่องอื่น</button>'+
+      '<div id="cls-key-box" style="flex-basis:100%"></div>'+
     '</div>';
   }
   // สรุปข้อมูลผู้เรียน (บนสุด)
