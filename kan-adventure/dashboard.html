@@ -218,7 +218,7 @@
 </style>
 <script>/* [ปลูกโดย build_repo.py] เลขรุ่นจาก game.html ที่เดียว
    ถ้าไม่มีบรรทัดนี้ ท่อส่งขึ้นเว็บกลางจะเงียบทั้งเส้นโดยไม่มีข้อความเตือน */
-var GAME_VERSION = 'V.7.99.74-IX2050-2569.100';</script>
+var GAME_VERSION = 'V.7.99.76-IX2050-2569.100';</script>
 </head>
 <body>
 
@@ -3790,7 +3790,7 @@ var CORE6ENG = (function(){
     var TWD=['เป็นสมาชิกทีมที่ดีและมีภาวะผู้นำ','ร่วมมือรวมพลังอย่างเป็นระบบ','สร้างความสัมพันธ์และจัดการความขัดแย้ง'];
     var TWC=['TW-A','TW-B','TW-C'];
     var TW_SRCTXT=['ความสม่ำเสมอของการแบ่งการ์ดในทีม',
-                   'อัตราที่ทีมกลับมาแก้จนผ่านหลังเคยยืนยันผิด',
+                   'อัตรากลับมาแก้จนผ่านหลังเคยยืนยันผิด + ความต่อเนื่องของการลงมือ (ไม่สะดุดนิ่ง)',
                    'สัดส่วนการเข้าไปช่วยแก้ของเพื่อน เทียบการเข้าไปยุ่งทั้งหมด'];
     var kruTW=kruAvgOf(TWC);
     var q1=0,q2=0,q3=0,tot12=0,peerPct=null,avg12=0;
@@ -3848,8 +3848,15 @@ var CORE6ENG = (function(){
         if(tot>0){ var k=per.length, share=mx/tot;
           if(k>1) tw1v.push(Math.max(0,Math.min(1,(1-share)/(1-1/k)))*100); }
       }
+      /* tw2 มีสองสัญญาณตาม `STD-008 v2.0` — เก็บแยกกัน แต่ละตัวเข้าเมื่อมีหลักฐานของตัวเองเท่านั้น */
       var ws=r.tsws, ok=r.tsok;
       if(ws!=null&&ws>0&&ok!=null) tw2v.push(Math.max(0,Math.min(1,ok/ws))*100);
+      /* 🎓 [V.7.99.76 · มติครู 8 ก.ย.] `idleGaps20s` = จำนวน "ครั้งที่ทีมสะดุด" (นิ่ง ≥20 วิ · `:14364`)
+         ⛔ ใช้จำนวนดิบไม่ได้ — เล่นนานย่อมสะดุดหลายครั้งกว่าโดยธรรมชาติ
+         ✅ ใช้เป็นสัดส่วนเทียบกับจำนวนครั้งที่ลงมือจริง ⇒ ไม่มีค่าตัดที่ต้องเคาะ
+         ⛔ แถวรุ่นก่อน V.7.99.60 ไม่มีช่องนี้ ⇒ ข้าม ไม่ใช่ให้ 0 (กฎเดียวกับ tw3) */
+      var idl=r.tsidle, pl=r.tspl;
+      if(idl!=null&&pl!=null&&(pl+idl)>0) tw2v.push((1-Math.max(0,Math.min(1,idl/(pl+idl))))*100);
       /* ⚠️ ต้องมีช่องทั้งคู่ถึงจะคิด — แถว v1 ไม่มีช่องเลย ⇒ ข้าม ไม่ใช่ให้ 0 ([PLAN] ข้อ ②) */
       if(r.tsfx!=null&&r.tsup!=null){
         var opp=r.tsfx+r.tsup;
@@ -4436,7 +4443,7 @@ function clsLoadStats(){
   function S(id){ return stats[id]||(stats[id]={pb:{},boss:0,bossN:0,cap:0,plays:0,last:0,ev:{q:[],p:[],c:[],k:[],b:[],pr:[],kru:[]}}); }
   /* [เฟส 3d] ดึงข้อมูลละเอียดพอคิดสูตร Dashboard V.2 (A/B/C/D) ได้ครบ — แยก 2 คำขอ: คำถามรายข้อ (แถวเยอะ ฟิลด์น้อย) กับที่เหลือ (แถวน้อย ฟิลด์เยอะ) */
   var SEL_Q='student_id,stage_id,question_id,correct,credit,created_at,att:raw->>attemptNo,sess:raw->>sessionId,cw:raw->>creditWeight,asb:raw->>assistedBy';
-  var SEL_O='student_id,kind,stage_id,score,created_at,att:raw->>attemptNo,attC:raw->>AttemptNo,cmp:raw->>completed,fst:raw->>isFirstAttempt,c24:raw->>rawTotal24,PD:raw->>problemDecomposition,EE:raw->>evidenceEvaluation,ST:raw->>systemsThinking,SD:raw->>solutionDesign,CD:raw->>creativeDevelopment,PA:raw->>planAdaptation,w5:raw->>pilokWeighted5,w5C:raw->>PilokWeighted5,grid:raw->>gridJSON,en:raw->>energySpent,dc:raw->>actualDigCount,gm:raw->_group->>members,tw1:raw->>teacherScore1,tw2:raw->>teacherScore2,tw3:raw->>teacherScore3,trv:raw->>teacherReviewedAt,cw1:raw->>commScore1,cw2:raw->>commScore2,cw3:raw->>commScore3,p1:raw->>peerTeam,p2:raw->>peerRole,p3:raw->>peerListen,pby:raw->>peerBy,ai1:raw->>aiScore1,ai2:raw->>aiScore2,ai3:raw->>aiScore3,p4:raw->>peerHT,p5:raw->>peerSM,p6:raw->>peerCM,p7:raw->>peerCZ,p8:raw->>peerNS,tsv:raw->teamStat->>v,tsn:raw->teamStat->>n,tsper:raw->teamStat->per,tsok:raw->teamStat->>okAfterWrong,tsws:raw->teamStat->>wrongSubmits,tsfx:raw->teamStat->>fixAfterPeerWrong,tsup:raw->teamStat->>undoPeerCorrect';
+  var SEL_O='student_id,kind,stage_id,score,created_at,att:raw->>attemptNo,attC:raw->>AttemptNo,cmp:raw->>completed,fst:raw->>isFirstAttempt,c24:raw->>rawTotal24,PD:raw->>problemDecomposition,EE:raw->>evidenceEvaluation,ST:raw->>systemsThinking,SD:raw->>solutionDesign,CD:raw->>creativeDevelopment,PA:raw->>planAdaptation,w5:raw->>pilokWeighted5,w5C:raw->>PilokWeighted5,grid:raw->>gridJSON,en:raw->>energySpent,dc:raw->>actualDigCount,gm:raw->_group->>members,tw1:raw->>teacherScore1,tw2:raw->>teacherScore2,tw3:raw->>teacherScore3,trv:raw->>teacherReviewedAt,cw1:raw->>commScore1,cw2:raw->>commScore2,cw3:raw->>commScore3,p1:raw->>peerTeam,p2:raw->>peerRole,p3:raw->>peerListen,pby:raw->>peerBy,ai1:raw->>aiScore1,ai2:raw->>aiScore2,ai3:raw->>aiScore3,p4:raw->>peerHT,p5:raw->>peerSM,p6:raw->>peerCM,p7:raw->>peerCZ,p8:raw->>peerNS,tsv:raw->teamStat->>v,tsn:raw->teamStat->>n,tsper:raw->teamStat->per,tsok:raw->teamStat->>okAfterWrong,tsws:raw->teamStat->>wrongSubmits,tsfx:raw->teamStat->>fixAfterPeerWrong,tsup:raw->teamStat->>undoPeerCorrect,tsidle:raw->teamStat->>idleGaps20s,tspl:raw->teamStat->>placed';
   /* 🔴 [V.7.99.73] `tsv`/`tsn` = หลักฐานพฤติกรรมทีม (`events.raw.teamStat`) ที่ V.7.99.59 เริ่มเก็บ
      **มันอยู่ในฐานมาตั้งแต่ 30 ส.ค. แต่ไม่เคยถูกดึงลงมาเลย** — ตัวเลือกคอลัมน์ไม่เคยขอมัน
      ⇒ จอครูจึงบอกว่า "ไม่มีการประเมินด้านนี้" ทั้งที่ข้อมูลนอนอยู่ในฐานทุกแถว
@@ -4494,7 +4501,10 @@ function clsLoadStats(){
             /* ⚠️ [PLAN] เตือนไว้: แถว v1 **ไม่มีคีย์สองตัวนี้ในโครงเลย** — ต้องแยก "ไม่มีช่อง" ออกจาก "มีช่องแต่เป็น 0"
                `null` = ไม่มีช่อง (ไม่มีหลักฐาน) · `0` = มีช่องและวัดได้ศูนย์จริง */
             tsfx:(e.tsfx!=null&&e.tsfx!=='')?Number(e.tsfx):null,
-            tsup:(e.tsup!=null&&e.tsup!=='')?Number(e.tsup):null}); }
+            tsup:(e.tsup!=null&&e.tsup!=='')?Number(e.tsup):null,
+            /* [V.7.99.76] ตัวนับชุดเดียวกับ tw3 — แถวรุ่นก่อน V.7.99.60 ไม่มีช่องนี้ ⇒ null = ข้าม ไม่ใช่ 0 */
+            tsidle:(e.tsidle!=null&&e.tsidle!=='')?Number(e.tsidle):null,
+            tspl:(e.tspl!=null&&e.tspl!=='')?Number(e.tspl):null}); }
         else if(e.kind==='boss'){ if(sc>30) sc=30; s.ev.b.push({sc:sc,att:att,t:t}); }
         else if(e.kind==='capstone'){ if(sc>s.cap)s.cap=sc;
           s.ev.c.push({c24:(e.c24!=null&&e.c24!=='')?e.c24:sc,att:att,fst:e.fst,cmp:e.cmp,t:t,PD:e.PD,EE:e.EE,ST:e.ST,SD:e.SD,CD:e.CD,PA:e.PA,
@@ -5411,7 +5421,9 @@ function _clsPubEventsToStats(evs, stats){
           tsws:(raw.teamStat&&raw.teamStat.wrongSubmits!=null)?Number(raw.teamStat.wrongSubmits):null,
           /* `in` ไม่ใช่ `!=null` — ต้องรู้ว่า "มีช่องไหม" ไม่ใช่ "ค่าว่างไหม" */
           tsfx:(raw.teamStat&&('fixAfterPeerWrong' in raw.teamStat))?Number(raw.teamStat.fixAfterPeerWrong):null,
-          tsup:(raw.teamStat&&('undoPeerCorrect' in raw.teamStat))?Number(raw.teamStat.undoPeerCorrect):null}); }
+          tsup:(raw.teamStat&&('undoPeerCorrect' in raw.teamStat))?Number(raw.teamStat.undoPeerCorrect):null,
+          tsidle:(raw.teamStat&&('idleGaps20s' in raw.teamStat))?Number(raw.teamStat.idleGaps20s):null,
+          tspl:(raw.teamStat&&('placed' in raw.teamStat))?Number(raw.teamStat.placed):null}); }
       else if(e.kind==='boss'){ if(sc>30) sc=30; st.ev.b.push({sc:sc,att:att,t:t}); }
       else if(e.kind==='capstone'){ if(sc>st.cap) st.cap=sc;
         st.ev.c.push({c24:(raw.rawTotal24!=null&&raw.rawTotal24!=='')?raw.rawTotal24:sc,att:att,fst:raw.isFirstAttempt,cmp:raw.completed,t:t,
