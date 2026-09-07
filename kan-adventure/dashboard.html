@@ -218,7 +218,7 @@
 </style>
 <script>/* [ปลูกโดย build_repo.py] เลขรุ่นจาก game.html ที่เดียว
    ถ้าไม่มีบรรทัดนี้ ท่อส่งขึ้นเว็บกลางจะเงียบทั้งเส้นโดยไม่มีข้อความเตือน */
-var GAME_VERSION = 'V.7.99.70-IX2050-2569.100';</script>
+var GAME_VERSION = 'V.7.99.71-IX2050-2569.100';</script>
 </head>
 <body>
 
@@ -4476,7 +4476,12 @@ function clsStatOf(stu){
   var colOld=!_fresh && (Number(stu.collected_score)||0)>0;   /* จริง = เลขนี้มาจากสเกลเก่า (เต็ม 160) */
   /* [ตรวจสอบข้อ 2] คะแนนสอบ: มีประวัติสอบใน events → ใช้ค่าตามกติกาครั้ง 1-2 (ตรงชีต Users เดิม) · ไม่มี → ใช้คะแนนสรุปที่ย้ายมา */
   var boss=(s&&s.bossN>0)?s.boss:(Number(stu.boss_score)||0);
-  return { collected:col, collectedOldScale:colOld, boss:boss, cap:s?s.cap:0, plays:s?s.plays:0, last:s?s.last:0,
+  /* [V.7.99.71 · เงื่อนไขผูกพันของ AUDIT 1 ก.ย.] ส่งธง "คิดจากลำดับเวลา" ออกมาถึงจอ
+     เด็กกลุ่มนี้ (แถวยุค Sheets ที่ไม่มีเลขครั้ง) ถูกคิดด้วยวิธีต่างจากเพื่อน
+     ⛔ AUDIT สั่งไว้ตรง ๆ ว่า "ห้ามกลืนรวมกับอีก 27 คนเงียบ ๆ" — *"ไม่รู้ครั้งที่" ≠ "รู้ครั้งที่จากเวลา"*
+     ธงติดเฉพาะเมื่อใช้ค่าสดจาก events จริง (bossN>0) — ค่าที่ย้ายมาจากฐานไม่ผ่านสูตรนี้ จึงไม่ติดธง */
+  var bossTimeOrder=!!(s&&s.bossN>0&&s.bossNoAtt);
+  return { collected:col, collectedOldScale:colOld, boss:boss, bossTimeOrder:bossTimeOrder, cap:s?s.cap:0, plays:s?s.plays:0, last:s?s.last:0,
     v2:(s&&s.v2)||null, c6:(s&&s.c6)||null, legacy:(s&&s.legacy)||null, shared:!!(s&&s.shared), gmem:(s&&s.gmem)||null,
     gmismatch:(s&&s.gmismatch)||0, has:(s&&s.plays>0)||col>0||boss>0 };
 }
@@ -5386,7 +5391,7 @@ function clsAchLevel(score, full, cuts){
     lv: v>=cuts[6]?6 : v>=cuts[5]?5 : v>=cuts[4]?4 : v>=cuts[3]?3 : 0 };
   return { pct:Math.round(pct*10)/10, lv: pct>=80?6 : pct>=70?5 : pct>=60?4 : pct>=50?3 : 0 };
 }
-function clsAchCell(score, full, bg, extra, cuts, oldScale){
+function clsAchCell(score, full, bg, extra, cuts, oldScale, timeOrder){
   var a=clsAchLevel(score, full, cuts);
   var base='text-align:center;background:'+bg+';'+(extra||'');
   if(!a) return '<td style="'+base+'"><span class="muted">–</span></td>';
@@ -5396,9 +5401,14 @@ function clsAchCell(score, full, bg, extra, cuts, oldScale){
      แต่ต้องบอกครูว่ากำลังดูอะไรอยู่ · ต่อท้าย title ที่มีอยู่แล้ว = ไม่เพิ่มองค์ประกอบบนจอ
      ⇒ ไม่มีทางแตะ ADR-003 · ค่าเก่าจะถูกคำนวณใหม่ตอน [Code] ทำงานฝั่งฐาน (กติกาคำนวณคู่) */
   if(oldScale) tip += ' · ⚠️ เลขนี้มาจากฐานข้อมูลที่บันทึกด้วยสเกลเก่า (เต็ม 160 รวมคะแนนด่านบอส) ยังไม่ได้คำนวณใหม่ตามสเกล 130';
+  /* [V.7.99.71 · เงื่อนไขผูกพันของ AUDIT] เด็กที่คะแนนสอบคิดจาก "ลำดับเวลา" แทน "เลขครั้ง"
+     ต้องเห็นได้บนจอ **โดยไม่ต้องเอาเมาส์ไปชี้** — tooltip อย่างเดียวยังนับว่าเงียบ
+     ⛔ ห้ามใช้สีแดง/คำว่า "ผิดพลาด" — เด็กกลุ่มนี้ไม่ได้ทำอะไรผิด ระบบยุคเก่าต่างหากที่ไม่บันทึกเลขครั้ง */
+  if(timeOrder) tip += ' · 🕘 คะแนนสอบของคนนี้คิดจาก "ลำดับเวลา" แทน "เลขครั้ง" เพราะแถวสอบยุคเดิมไม่ได้บันทึกเลขครั้งไว้ — ใช้กติกาเดียวกับเพื่อนทุกประการ (แถวแรกตามเวลา = ครั้งที่ 1)';
   /* [V.7.77 ตามที่ครูสั่ง] ตัดบรรทัด % ออก เหลือคะแนนกับ "สี" ที่บอกระดับ (ตัวเลข % ยังดูได้จาก tooltip) */
   return '<td style="'+base+'" title="'+esc(tip)+'">'+
-    '<b style="display:inline-block;min-width:34px;background:'+clr+';color:#fff;border-radius:7px;padding:2px 9px;font-size:12.5px">'+(Math.round(Number(score)*10)/10)+'</b></td>';
+    '<b style="display:inline-block;min-width:34px;background:'+clr+';color:#fff;border-radius:7px;padding:2px 9px;font-size:12.5px">'+(Math.round(Number(score)*10)/10)+'</b>'+
+    (timeOrder?'<span class="ach-timeorder" style="font-size:12px;margin-left:3px;vertical-align:middle">🕘</span>':'')+'</td>';
 }
 /* [V.7.71 ข้อ 10 ตามที่ครูขอ] สมรรถนะหลัก 6 ด้านแยกเป็น "คอลัมน์ละด้าน"
    ชื่อด้านย้ายไปอยู่หัวตาราง · ในเซลล์แสดงเป็น "ตัวเลข %" และใช้สีพื้นแทนระดับ 3-6
@@ -6445,7 +6455,9 @@ function clsScoresHtml(r){
   /* [V.7.99.49] แถบแท็บอยู่เหนือตาราง — ตำแหน่งเดียวกับภาค 2 */
   var _tabBar=CLS1TAB.barHTML(r.id);
   var LV_TXT={6:'#fff',5:'#fff',4:'#fff',3:'#fff'};
+  var _nTimeOrder=0;   /* [V.7.99.71] นับคนที่คะแนนสอบคิดจากลำดับเวลา — ใช้ในคำอธิบายใต้ตาราง */
   var rows=studs.map(function(s,idx){ var t=clsStatOf(s), v=t.v2;
+    if(t.bossTimeOrder) _nTimeOrder++;
     /* [ข้อ 3] ระดับเป็นป้ายสี: 6 ม่วง · 5 เขียว · 4 ส้ม · 3 เทา */
     var lvHtml='<span class="muted">–</span>';
     if(v&&v.dataStatus!=='NO_DATA') lvHtml='<span style="display:inline-block;background:'+(CLS_LV_CLR[v.level]||'#64748b')+';color:#fff;border-radius:999px;padding:2px 10px;font-weight:800;font-size:12px;white-space:nowrap">'+v.level+' '+esc(v.levelLabel||'')+'</span>';
@@ -6462,7 +6474,7 @@ function clsScoresHtml(r){
         (clsIsActive(s)?'':' <span title="ครูปิดการใช้งานไว้ — ข้อมูลอยู่ครบ แต่ไม่ถูกนับในยอดรวม/ค่าเฉลี่ย/กระดานอันดับ เปิดกลับได้ที่หน้าจัดการห้อง" style="font-size:10.5px;background:#fee2e2;color:#b91c1c;border-radius:6px;padding:1px 6px">⏸ ปิดใช้งาน</span>')+'</td>'+
       /* [V.7.99.62] เลิกส่ง cuts (arg 5 = null) · ส่งธง "สเกลเก่า" เป็น arg 6 แทน */
       clsAchCell(t.collected, CLS_MAX_COLLECTED, ACH_BG, '', null, t.collectedOldScale)+
-      clsAchCell(t.boss, CLS_MAX_BOSS, ACH_BG, 'border-right:2px solid #fde68a;')+
+      clsAchCell(t.boss, CLS_MAX_BOSS, ACH_BG, 'border-right:2px solid #fde68a;', null, false, t.bossTimeOrder)+
       /* [V.7.71 ข้อ 10] สมรรถนะหลัก 6 ด้าน — คอลัมน์ละด้าน แสดง % + สีตามระดับ · [V.7.77] กดที่ช่องไหน = เห็นคะแนนรายด้านย่อยของด้านนั้น */
       clsCore6Cells(t, s.id)+
       '<td style="text-align:center">'+(t.plays||'–')+'</td>'+
@@ -6545,10 +6557,28 @@ function clsScoresHtml(r){
       '<span class="muted">ระดับ:</span>'+
       [[6,'เหนือความคาดหวัง'],[5,'สามารถ'],[4,'กำลังพัฒนา'],[3,'เริ่มต้น']].map(function(L){ return '<span style="background:'+CLS_LV_CLR[L[0]]+';color:#fff;border-radius:999px;padding:1px 9px;font-weight:700">'+L[0]+' '+L[1]+'</span>'; }).join('')+
       '<span class="muted" style="margin-left:6px">· จุดส้ม • = ข้อมูลส่วนนั้นยังไม่ครบตามเกณฑ์ · <b>กดที่ช่องสมรรถนะ</b> เพื่อดูคะแนนรายด้านย่อยของด้านนั้น (ด้านการคิดขั้นสูงจะเห็นคะแนน A·B·C·D ด้วย) · <b>คลิกแถวนักเรียน</b> เพื่อดูภาพรวมทั้ง 6 ด้าน + แก้ไข/ลบ</span>'+
-      /* [V.7.71 ข้อ 11] บอกเกณฑ์สีของคะแนนเก็บ/สอบให้ชัด */
-      '<div style="width:100%;margin-top:4px" class="muted">คะแนนเก็บ/สอบ ใช้สีชุดเดียวกับระดับสมรรถนะ โดยเทียบเป็น % ของคะแนนเต็ม: '+
-        '<b style="color:'+CLS_LV_CLR[6]+'">≥80% = 6</b> · <b style="color:'+CLS_LV_CLR[5]+'">≥70% = 5</b> · '+
-        '<b style="color:'+CLS_LV_CLR[4]+'">≥60% = 4</b> · <b style="color:'+CLS_LV_CLR[3]+'">≥50% = 3</b> · ต่ำกว่า 50% แสดงเป็นสีเทา</div>'+
+      /* 🔴 [V.7.99.71] บรรทัดนี้เดิมเขียนว่า "คะแนนเก็บ/สอบ ใช้สีชุดเดียวกับระดับสมรรถนะ"
+         แล้วพิมพ์ "≥80% = 6 · ≥70% = 5 · …" ด้วย CLS_LV_CLR
+         ⇒ **ผิดมติ ค1 พร้อมกันสองข้อ**: ผลสัมฤทธิ์มีเลขระดับ + ใช้จานสีสมรรถนะ
+         ⚠️ `.69` ของผมแก้เซลล์กับ grade_label แต่ **ลืมบรรทัดนี้** และข้อสอบก็ไม่จับ
+            เพราะผมตรวจ "รูปทรงหนึ่งของความผิด" (`'ระดับ '+ach.lv`) ไม่ได้ตรวจ "คุณสมบัติ"
+            บรรทัดนี้พิมพ์เลขเปล่า ๆ (`= 6`) และอยู่นอก clsAchCell จึงรอดสายตาไปทั้งรุ่น
+            ⇒ รอบนี้แก้ทั้งโค้ดและเขียนข้อสอบใหม่ให้ตรวจคุณสมบัติแทนรูปทรง (P-KAN1-04 ของผมเอง) */
+      '<div style="width:100%;margin-top:4px" class="muted">🏆 <b>คะแนนเก็บ/คะแนนสอบ</b> ใช้ป้ายคุณภาพของผลสัมฤทธิ์ (คนละชุดกับระดับสมรรถนะ) เทียบเป็น % ของคะแนนเต็ม: '+
+        [[6,'ดีเยี่ยม','≥80%'],[5,'ดี','≥70%'],[4,'พอใช้','≥60%'],[3,'ผ่าน','≥50%']].map(function(A){
+          return '<b style="color:'+achClr(A[0])+'">'+A[2]+' = '+A[1]+'</b>'; }).join(' · ')+
+        ' · ต่ำกว่า 50% = '+ACH_NONE+' (สีเทา)</div>'+
+      /* [V.7.99.71 · เงื่อนไขผูกพันของ AUDIT] บอก "จำนวนคน" ตรง ๆ ไม่ให้ครูต้องไล่นับเครื่องหมายเอง
+         นี่คือสิ่งที่ทำให้ธง "ไม่เงียบ" จริง และเป็นเลขที่เล่มต้องใช้ ("N จาก M ใช้ลำดับเวลาแทน") */
+      (function(){
+        var nT=_nTimeOrder, nAll=studs.length;
+        if(!nT) return '';
+        return '<div style="width:100%;margin-top:5px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:6px 9px;font-size:11.5px;color:#78350f">'+
+          '🕘 <b>'+nT+' จาก '+nAll+' คนในตารางนี้</b> คิดคะแนนสอบจาก <b>"ลำดับเวลา"</b> แทน <b>"เลขครั้ง"</b> '+
+          'เพราะแถวสอบยุคเดิม (ก่อนระบบบันทึกเลขครั้ง) ไม่มีเลขครั้งเก็บไว้ — '+
+          '<b>ใช้กติกาเดียวกับเพื่อนทุกประการ</b> (แถวแรกตามเวลา = ครั้งที่ 1 · ที่เหลือ = การสอบซ่อม เพดาน '+BOSS_RETAKE_CAP+') '+
+          '⛔ ไม่ใช่ข้อผิดพลาดของนักเรียน และไม่ได้ทำให้เสียคะแนน</div>';
+      })()+
     '</div>'+
   '</div>';
 }
