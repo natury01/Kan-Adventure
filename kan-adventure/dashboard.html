@@ -218,7 +218,7 @@
 </style>
 <script>/* [ปลูกโดย build_repo.py] เลขรุ่นจาก game.html ที่เดียว
    ถ้าไม่มีบรรทัดนี้ ท่อส่งขึ้นเว็บกลางจะเงียบทั้งเส้นโดยไม่มีข้อความเตือน */
-var GAME_VERSION = 'V.7.99.73-IX2050-2569.100';</script>
+var GAME_VERSION = 'V.7.99.74-IX2050-2569.100';</script>
 </head>
 <body>
 
@@ -3332,8 +3332,11 @@ var CV2 = (function(){
 
   /* ev = {q:[{sid,qid,ok,cr,att,sess,t}], p:[{sid,sc,cmp,att,t}], c:[{c24,att,fst,cmp,t,PD,EE,ST,SD,CD,PA}], k:[{w5,att,grid,en,dc,t}]} */
   function compute(ev){
-    var comp={CTC:{e:0,m:0},STM:{e:0,m:0},CRT:{e:0,m:0},PRB:{e:0,m:0}};
-    function add(k,e,m){ if(comp[k]){ comp[k].e+=e; comp[k].m+=m; } }
+    /* [V.7.99.74 · ADR-012] เพิ่มช่อง `c` = **จำนวนชิ้นหลักฐานจริง** ของด้านย่อยนั้น
+       เดิมมีแต่ `e`/`m` ซึ่งเป็น "คะแนนถ่วงน้ำหนัก" ใช้เป็นปริมาณหลักฐานไม่ได้
+       ⇒ ต้องมีตัวนับชิ้นจริง เพราะ ADR-012 สั่งให้ HT อยู่ใต้เพดาน 4/8/15 เหมือนทุกด้าน */
+    var comp={CTC:{e:0,m:0,c:0},STM:{e:0,m:0,c:0},CRT:{e:0,m:0,c:0},PRB:{e:0,m:0,c:0}};
+    function add(k,e,m,c){ if(comp[k]){ comp[k].e+=e; comp[k].m+=m; comp[k].c+=(c==null?1:c); } }
 
     /* ---- A: ข้อคิดวิเคราะห์ระหว่างด่าน — [ตามคำขอครู] คิดตามสัดส่วนจากข้อมูลเท่าที่มี:
          มีรอบ 2-3 → ครั้งแรก 40% + รอบเก่งสุด 60% (สูตรทางการ hotsV2_scoreA) · มีแค่ครั้งแรก → ใช้ครั้งแรกเต็ม ---- */
@@ -3366,7 +3369,7 @@ var CV2 = (function(){
     Object.keys(PERF_TASKS).forEach(function(sid){
       var task=PERF_TASKS[sid];
       if(sid==='pilok'){
-        if(!pk.length){ bDetail.pilok={st:'INCOMPLETE_PILOK_TELEMETRY',prov:null,w:task.w}; add(task.c,0,0); return; }
+        if(!pk.length){ bDetail.pilok={st:'INCOMPLETE_PILOK_TELEMETRY',prov:null,w:task.w}; add(task.c,0,0,0); return; }
         /* [ตามคำขอครู] ขุดปิล๊อกรอบประเมิน (ครั้ง 2+) มีเมื่อไหร่ใช้รอบนั้น · มีแค่ครั้งแรกก็ใช้ครั้งแรก */
         var pk23=pk.filter(function(r){ return has(r.att)&&num(r.att)>=2; });
         var pkUse=pk23.length?pk23:pk;
@@ -3385,7 +3388,13 @@ var CV2 = (function(){
         return;
       }
       var rows=ps.filter(function(r){ return String(r.sid)===sid&&isT(r.cmp); });
-      if(!rows.length){ bDetail[sid]={st:'MISSING_TASK',prov:0,w:task.w}; add(task.c,0,task.w); return; }
+      /* 🔴 [V.7.99.74] เดิม `add(task.c,0,task.w)` = ภารกิจที่เด็ก**ยังไม่ได้ทำ** ถูกนับเป็น
+         "ได้ 0 จากเต็ม" ⇒ ลากเปอร์เซ็นต์ของด้านย่อยนั้นลง **เหมือนทำแล้วได้ศูนย์**
+         ⛔ ผิดข้อห้ามถาวร "ห้ามใส่ 0 แทนไม่มีหลักฐาน ต้องตัดออกจากตัวหาร"
+         ตอนนี้ยังไม่ระเบิดเพราะ HT ตัดสินจากคะแนนรวม — **แต่พอ ADR-012 ให้ด้านย่อยเป็นตัวตัดสิน
+         มันจะกลายเป็นตัวกดระดับเด็กทันที** ⇒ แก้พร้อมกันในรุ่นนี้
+         (คะแนนรวม `bProv` ยังนับ 0 เหมือนเดิมทุกประการ — ไม่แตะผลสัมฤทธิ์) */
+      if(!rows.length){ bDetail[sid]={st:'MISSING_TASK',prov:0,w:task.w}; add(task.c,0,0,0); return; }
       /* [ตามคำขอครู] มีรอบประเมิน (ครั้ง 2 ขึ้นไป) → ใช้รอบนั้นตามสูตรทางการ · เล่นแค่ครั้งแรก → ใช้ครั้งแรกไปก่อน */
       var rows23=rows.filter(function(r){ return has(r.att)&&num(r.att)>=2; });
       var use=rows23.length?rows23:rows;
@@ -3433,7 +3442,8 @@ var CV2 = (function(){
     }
 
     /* ---- รวม + ระดับ + สถานะ ---- */
-    var compScore={}; COMPS.forEach(function(k){ compScore[k]=comp[k].m>0?r2(comp[k].e/comp[k].m*100):null; });
+    var compScore={}, compN={};
+    COMPS.forEach(function(k){ compScore[k]=comp[k].m>0?r2(comp[k].e/comp[k].m*100):null; compN[k]=comp[k].c||0; });
     var provTotal=r2((aProv||0)+(bProv||0)+(cProv||0)+(dProv||0));
     var strictComplete=aStatus==='OK'&&bStatus==='OK'&&cStatus==='OK'&&dStatus==='OK';
     var strictTotal=null, sLv=null, sNote='';
@@ -3456,7 +3466,7 @@ var CV2 = (function(){
     return { A:aProv, B:bProv, C:cProv, D:dProv, d24:dRaw,
       total:provTotal, level:provLv, levelLabel:LV_LABEL[provLv],
       strictTotal:strictTotal, strictLevel:sLv, strictNote:sNote,
-      comp:compScore, status:{A:aStatus,B:bStatus,C:cStatus,D:dStatus},
+      comp:compScore, compN:compN, status:{A:aStatus,B:bStatus,C:cStatus,D:dStatus},
       missing:missing, dataStatus:noData?'NO_DATA':(strictComplete?'COMPLETE_STRICT':'PROVISIONAL') };
   }
   return { compute: compute, LV_LABEL: LV_LABEL, W: W,
@@ -3530,18 +3540,56 @@ var CORE6ENG = (function(){
   }
   function compute(ev,v2,stat){
     ev=ev||{}; var out={};
-    out.HT = (v2&&v2.dataStatus!=='NO_DATA'&&v2.total!=null)
-      ? { st:'score', pct:Math.round(v2.total*10)/10, level:v2.level, n:4, capExempt:true,
-          src:'คะแนนรวม HOTS (A20·B30·C25·D25) — หลักฐานรวมกว่า 90 ชิ้น จึงไม่ติดเพดานปริมาณหลักฐาน', strict:v2.dataStatus }
-      : { st:'partial', pct:null, n:0, need:1, src:'คะแนนรวม HOTS' };
+    /* ════════════════════════════════════════════════════════════════════════
+       🎓 [V.7.99.74 · ADR-012 + มติครู 7 ก.ย. "ทำให้เหมือนสมรรถนะด้านอื่น"]
+       เดิม HT ตัดสินด้วย **คะแนนรวมถ่วงน้ำหนัก A20·B30·C25·D25** และได้ `capExempt:true`
+       = ด้านเดียวใน 6 ด้านที่ได้ยกเว้นจากกติกาปริมาณหลักฐานที่โรงเรียนตั้งเอง
+       ADR-012 (29 ส.ค. · มติครู) ยกเลิกทั้งสองอย่างนี้ไปแล้ว แต่ไม่เคยถูกลงมือ 9 วัน
+       เพราะค้างสองข้อที่ต้องให้ครูเคาะ — **ครูเคาะแล้วคืนนี้: ทำให้เหมือนด้านอื่น เปิดใช้เลย**
+
+       ของใหม่ = ท่าเดียวกับอีก 5 ด้านเป๊ะ:
+         · ตัดสินจากด้านย่อย CTC·STM·CRT·PRB  · ผ่าน `pack()` ตัวเดียวกัน
+         · อยู่ใต้เพดานหลักฐาน 4/8/15 เหมือนทุกด้าน (`capExempt` หายไป)
+       ⛔ ด้านย่อยที่ไม่มีหลักฐาน = **ตัดออกจากตัวหาร ห้ามนับเป็น 0**
+       📌 แผง A/B/C/D ยังอยู่ครบใน `parts` — แต่เป็น **"แหล่งหลักฐาน" ไม่ใช่ตัวตัดสิน** (ADR-012 ข้อ 4)
+       ⚠️ ราคาที่ ADR-012 เขียนเตือนไว้เอง: เด็กจะได้ระดับต่ำลง/ได้ "ยังไม่พอสรุป" มากขึ้น
+          **ค่าที่ต่ำลงคือค่าที่ตรงขึ้น** — ต้องอธิบายในเล่ม ไม่ใช่ซ่อน
+       ════════════════════════════════════════════════════════════════════════ */
+    var HT_CODES=['CTC','STM','CRT','PRB'];
+    var _htPcts=[], _htN=0, _htNone=[];
+    HT_CODES.forEach(function(k){
+      var v=(v2&&v2.comp)?v2.comp[k]:null;
+      var c=(v2&&v2.compN)?(Number(v2.compN[k])||0):0;
+      if(v==null||!c){ _htNone.push(k); return; }   /* ⛔ ไม่มีหลักฐาน = ไม่เข้าตัวหาร ไม่ใช่ 0 */
+      _htPcts.push(v); _htN+=c;
+    });
+    var _htPct=null;
+    if(_htPcts.length){ var _hs=0; _htPcts.forEach(function(x){ _hs+=x; }); _htPct=Math.round(_hs/_htPcts.length*10)/10; }
+    var _htSrc='ตัดสินจากด้านย่อยการคิด '+_htPcts.length+'/4 ด้าน (CTC·STM·CRT·PRB) — วิธีเดียวกับอีก 5 สมรรถนะ ตาม ADR-012'+
+      (_htNone.length?(' · ยังไม่มีหลักฐาน: '+_htNone.join(' · ')):'')+
+      ' · แผง A/B/C/D เป็นแหล่งหลักฐาน ไม่ใช่ตัวตัดสินอีกต่อไป';
+    out.HT = (v2&&v2.dataStatus!=='NO_DATA'&&_htPct!=null)
+      ? pack(_htPct, _htN, EV_L4, _htSrc)
+      : { st:'partial', pct:null, n:_htN, need:EV_L4,
+          src:'ยังไม่มีหลักฐานด้านย่อยการคิดของนักเรียนคนนี้ — '+_htSrc };
+    if(v2) out.HT.strict=v2.dataStatus;
+    out.HT.subCover=_htPcts.length;            /* ตัดสินจากกี่ด้านย่อย — จอครูต้องบอก ไม่ให้เงียบ */
+    out.HT.subNone=_htNone.length?_htNone:null;
+    out.HT.legacyTotal=(v2&&v2.total!=null)?Math.round(v2.total*10)/10:null;  /* เก็บเลขสูตรเดิมไว้เทียบ ไม่ใช้ตัดสิน */
     if(v2&&v2.dataStatus!=='NO_DATA'){
       var SF={A:20,B:30,C:25,D:25}, SN={A:'A ข้อคิดวิเคราะห์ระหว่างด่าน',B:'B ภารกิจและมินิเกม',C:'C แบบทดสอบหลังเรียน',D:'D เกณฑ์ผลงานกาญจนบุรี 2050'};
       var CN2={CTC:'คิดอย่างมีวิจารณญาณ (CTC)',STM:'คิดเชิงระบบ (STM)',CRT:'คิดสร้างสรรค์ (CRT)',PRB:'คิดแก้ปัญหา (PRB)'};
+      /* [V.7.99.74 · ADR-012 ข้อ 4] A/B/C/D ยังแสดงได้ แต่ติดป้ายให้ชัดว่าเป็น "แหล่งหลักฐาน"
+         ไม่ใช่สูตรตัดสินอีกต่อไป — ไม่งั้นครูอ่านแล้วนึกว่าระดับยังคิดจากตรงนี้ */
       out.HT.parts=['A','B','C','D'].map(function(k){ var sv=v2[k];
-        return { label:SN[k], pct:(sv==null?null:Math.round(sv/SF[k]*1000)/10), txt:(sv==null?'–':(Math.round(sv*10)/10))+'/'+SF[k], warn:!(v2.status&&v2.status[k]) };
+        return { label:SN[k]+' (แหล่งหลักฐาน · ไม่ใช่ตัวตัดสินระดับ)', pct:(sv==null?null:Math.round(sv/SF[k]*1000)/10), txt:(sv==null?'–':(Math.round(sv*10)/10))+'/'+SF[k], warn:!(v2.status&&v2.status[k]) };
       });
+      /* [V.7.99.74 · ADR-012] ด้านย่อยพก **จำนวนชิ้นหลักฐาน** มาด้วย — เดิมเป็นชิปโชว์ % เฉย ๆ
+         ที่ ADR-012 เขียนไว้เองว่า *"ไม่เคยถูกใช้ตัดสินอะไร"* · ตอนนี้มันคือตัวตัดสิน */
       out.HT.dims=['CTC','STM','CRT','PRB'].map(function(k){ var cv=v2.comp?v2.comp[k]:null;
-        return { label:CN2[k], pct:(cv==null?null:Math.round(cv*10)/10), txt:(cv==null?'ยังไม่มีหลักฐานจากเกม':Math.round(cv)+'%'), dim:true };
+        var cn=(v2.compN?Number(v2.compN[k]):0)||0;
+        return { label:CN2[k], code:'HT-'+k, pct:((cv==null||!cn)?null:Math.round(cv*10)/10), evN:cn,
+          txt:((cv==null||!cn)?'ยังไม่มีหลักฐานจากเกมในด้านย่อยนี้':(Math.round(cv)+'% · หลักฐาน '+cn+' ชิ้น')), dim:true };
       });
     }
     /* ===== [V.7.80] แหล่งหลักฐานเพิ่มเติมต่อ "ด้านย่อย": ข้อสอบติดป้าย (QDIM_MAP) + ครูประเมินจากการสังเกต (kru_assess)
@@ -3741,6 +3789,9 @@ var CORE6ENG = (function(){
     var TWQ=['ช่วยคิดและเสนอความเห็นให้ทีม','ทำหน้าที่ที่ตกลงกันไว้จนสำเร็จ','รับฟังเมื่อคิดต่างกัน ไม่เอาแต่ใจ'];
     var TWD=['เป็นสมาชิกทีมที่ดีและมีภาวะผู้นำ','ร่วมมือรวมพลังอย่างเป็นระบบ','สร้างความสัมพันธ์และจัดการความขัดแย้ง'];
     var TWC=['TW-A','TW-B','TW-C'];
+    var TW_SRCTXT=['ความสม่ำเสมอของการแบ่งการ์ดในทีม',
+                   'อัตราที่ทีมกลับมาแก้จนผ่านหลังเคยยืนยันผิด',
+                   'สัดส่วนการเข้าไปช่วยแก้ของเพื่อน เทียบการเข้าไปยุ่งทั้งหมด'];
     var kruTW=kruAvgOf(TWC);
     var q1=0,q2=0,q3=0,tot12=0,peerPct=null,avg12=0;
     if(pr.length){
@@ -3778,19 +3829,62 @@ var CORE6ENG = (function(){
        ตรงนี้แค่ "นับชิ้น" ซึ่งไม่ขึ้นกับยุค แต่บันทึกยุคไว้กันคนรุ่นหลังเผลอเอาไปเฉลี่ยข้ามยุค */
     var twEra={}; twRows.forEach(function(r){ var k='v'+r.ts; twEra[k]=(twEra[k]||0)+1; });
     var twEraTxt=Object.keys(twEra).sort().map(function(k){ return k+' '+twEra[k]+' รอบ'; }).join(' · ');
-    var twPct=null;   /* 🔒 ค1 ยังไม่เสร็จ — ห้ามใส่ตัวเลขตรงนี้จนกว่า AUDIT จะรับรองเกณฑ์ tw1-3 */
-    var twSrc=(twN
-        ? 'หลักฐานหลัก: พฤติกรรมการทำงานร่วมกันที่เกมบันทึกเอง (teamStat) จากการเล่นกลุ่ม 2 คนขึ้นไป '+twN+' รอบ'+
+    /* ════════════════════════════════════════════════════════════════════
+       [V.7.99.74 · งาน ค1] สูตร tw1-3 จาก `teamStat` — เสียบที่ประตูที่ `.73` เปิดค้างไว้
+       tw1 = ความสม่ำเสมอของการแบ่งการ์ด `(1−maxShare)/(1−1/n)` — ไม่มีค่าตัดที่ต้องเคาะ
+       tw2 = **อัตรา** `okAfterWrong / wrongSubmits` (ไม่ใช่จำนวนดิบ)
+             🔑 รูปจำนวนดิบมีโรคเดียวกับ `TW-1` เดิมที่ AUDIT จับได้ — *ให้รางวัลกับการสร้างปัญหา*
+                รูปอัตรา ตัวตั้งกับตัวหารโตพร้อมกัน ⇒ ผิดเยอะไม่ได้คะแนนเพิ่ม
+             ⛔ ทีมที่ไม่เคยผิด = ไม่มีโอกาสแสดงการกลับมาแก้ ⇒ ไม่มีหลักฐาน **ห้ามให้ 0**
+       tw3 = `fixAfterPeerWrong` เทียบการรื้อของเพื่อนทั้งหมด — คิดเฉพาะแถวที่ **มีช่องจริง**
+       ⛔ `rescues` ไม่ถูกใช้ — มันครอบ `undoPeerCorrect` (`:14361`) จะกลายเป็นให้คะแนนการรื้อของเพื่อน
+       ════════════════════════════════════════════════════════════════════ */
+    var tw1v=[], tw2v=[], tw3v=[];
+    twRows.forEach(function(r){
+      var per=r.tsper;
+      if(per&&per.length>1){
+        var tot=0, mx=0;
+        per.forEach(function(q){ var t=Number(q&&q.tasks)||0; tot+=t; if(t>mx) mx=t; });
+        if(tot>0){ var k=per.length, share=mx/tot;
+          if(k>1) tw1v.push(Math.max(0,Math.min(1,(1-share)/(1-1/k)))*100); }
+      }
+      var ws=r.tsws, ok=r.tsok;
+      if(ws!=null&&ws>0&&ok!=null) tw2v.push(Math.max(0,Math.min(1,ok/ws))*100);
+      /* ⚠️ ต้องมีช่องทั้งคู่ถึงจะคิด — แถว v1 ไม่มีช่องเลย ⇒ ข้าม ไม่ใช่ให้ 0 ([PLAN] ข้อ ②) */
+      if(r.tsfx!=null&&r.tsup!=null){
+        var opp=r.tsfx+r.tsup;
+        if(opp>0) tw3v.push(Math.max(0,Math.min(1,r.tsfx/opp))*100);
+      }
+    });
+    var _avg=function(a){ if(!a||!a.length) return null; var t=0; a.forEach(function(x){ t+=x; }); return Math.round(t/a.length*10)/10; };
+    var tw1=_avg(tw1v), tw2=_avg(tw2v), tw3=_avg(tw3v);
+    var _twSub=[]; if(tw1!=null)_twSub.push(tw1); if(tw2!=null)_twSub.push(tw2); if(tw3!=null)_twSub.push(tw3);
+    var twPct=_twSub.length?_avg(_twSub):null;
+    /* 🔴 [PLAN ข้อ ③ · กับดักที่เขาจับได้ก่อนผมลงมือ] ปริมาณหลักฐานต้องนับ **ข้อสังเกตรายด้านย่อย**
+       ไม่ใช่ **จำนวนรอบ** — ไม่งั้นเด็กผ่านเพดาน 4 ชิ้นด้วยรอบที่มีแต่ tw1/tw2 แล้วได้ระดับทั้งด้าน
+       ทั้งที่ tw3 ว่างเปล่า = *"ตัวเลขที่ดูครบ แต่ครบเพราะตัวหารไม่ได้เรียกร้องสิ่งที่ขาด"* */
+    var twEvN=tw1v.length+tw2v.length+tw3v.length;
+    var twSrc=(twEvN
+        ? 'หลักฐานหลัก: พฤติกรรมการทำงานร่วมกันที่เกมบันทึกเอง (teamStat) จากการเล่นกลุ่ม 2 คนขึ้นไป '+twN+' รอบ ⇒ ข้อสังเกตรายด้านย่อย '+twEvN+' ชิ้น'+
           (twEraTxt?(' ('+twEraTxt+')'):'')
         : 'หลักฐานหลัก: พฤติกรรมการทำงานร่วมกันจากการเล่นกลุ่ม 2 คนขึ้นไป — นักเรียนคนนี้ยังไม่มีรอบเล่นกลุ่มที่บันทึกไว้')+
-      ' · เกมเก็บข้อมูลด้านนี้อยู่จริงตั้งแต่ V.7.99.59 แต่ยังไม่มีเกณฑ์ตัดสินระดับ ⇒ ระบบรายงานปริมาณหลักฐาน ไม่ตัดสินระดับ'+
+      (twPct==null?' · เกมเก็บข้อมูลด้านนี้อยู่จริงตั้งแต่ V.7.99.59 แต่ยังไม่มีข้อสังเกตที่ใช้ตัดสินได้ของนักเรียนคนนี้'
+                  :' · ตัดสินจากด้านย่อย '+_twSub.length+'/3 ด้าน (วิธีเดียวกับอีก 5 สมรรถนะ)')+
       (pr.length||kruTW!=null?' · หลักฐานประกอบ ('+(pr.length?('เพื่อนประเมิน '+pr.length+' คน'):'')+(pr.length&&kruTW!=null?' และ ':'')+(kruTW!=null?'ครูสังเกต':'')+') ดูได้ที่หน้าเทียบผล และครูตัดสินระดับเองได้ที่นั่น':'');
-    out.TW=pack(twPct, twN, EV_L4, twSrc);
+    out.TW=pack(twPct, twEvN, EV_L4, twSrc);
     /* ธงบอกว่า "ว่างเพราะยังไม่มีเกณฑ์" ไม่ใช่ "ว่างเพราะไม่มีของ" — จอครูกับเว็บกลางอ่านธงนี้
        ⚠️ ต้องแยกจาก `noAssess` ให้ขาด ไม่งั้นก็กลับไปโทษเครื่องมือเหมือนเดิม */
-    out.TW.awaitRule=true;
+    out.TW.awaitRule=(twPct==null);   /* [V.7.99.74] มีคะแนนแล้ว = ไม่ได้รอเกณฑ์อีกต่อไป */
     out.TW.twEra=twEra;
-    out.TW.dims=TWD.map(function(lbl,i){ return mkDim(lbl,TWC[i],[]); });
+    out.TW.twRounds=twN;                /* จำนวนรอบเล่นกลุ่ม — แสดงได้ แต่ไม่ใช่ปริมาณหลักฐาน */
+    out.TW.subCover=_twSub.length;
+    /* [V.7.99.74] ด้านย่อยพกคะแนนจริง — ตัวที่ไม่มีหลักฐานส่ง base ว่างเหมือนเดิม
+       ⇒ `gpComp` รายงานมันใน `sub_no_evidence` (กลไกของ `.72`) ไม่ใช่ส่ง 0 */
+    var _twBase=[tw1,tw2,tw3], _twNs=[tw1v.length,tw2v.length,tw3v.length];
+    out.TW.dims=TWD.map(function(lbl,i){
+      var v=_twBase[i];
+      return mkDim(lbl,TWC[i], v==null?[]:[{ pct:v, txt:TW_SRCTXT[i], n:_twNs[i] }]);
+    });
     out.TW.parts=(pr.length?[q1,q2,q3].map(function(x,i){ var a=x/pr.length;
       return { label:TWQ[i]+' — เพื่อนประเมิน '+pr.length+' คน (หลักฐานประกอบ)', pct:Math.round(a/4*1000)/10, txt:(Math.round(a*10)/10)+'/4' }; }):[]);
     if(twN) out.TW.parts.unshift({ label:'รอบเล่นกลุ่มที่บันทึกพฤติกรรมทีม (หลักฐานหลัก · ยังไม่มีเกณฑ์ตัดสิน)',
@@ -4342,7 +4436,7 @@ function clsLoadStats(){
   function S(id){ return stats[id]||(stats[id]={pb:{},boss:0,bossN:0,cap:0,plays:0,last:0,ev:{q:[],p:[],c:[],k:[],b:[],pr:[],kru:[]}}); }
   /* [เฟส 3d] ดึงข้อมูลละเอียดพอคิดสูตร Dashboard V.2 (A/B/C/D) ได้ครบ — แยก 2 คำขอ: คำถามรายข้อ (แถวเยอะ ฟิลด์น้อย) กับที่เหลือ (แถวน้อย ฟิลด์เยอะ) */
   var SEL_Q='student_id,stage_id,question_id,correct,credit,created_at,att:raw->>attemptNo,sess:raw->>sessionId,cw:raw->>creditWeight,asb:raw->>assistedBy';
-  var SEL_O='student_id,kind,stage_id,score,created_at,att:raw->>attemptNo,attC:raw->>AttemptNo,cmp:raw->>completed,fst:raw->>isFirstAttempt,c24:raw->>rawTotal24,PD:raw->>problemDecomposition,EE:raw->>evidenceEvaluation,ST:raw->>systemsThinking,SD:raw->>solutionDesign,CD:raw->>creativeDevelopment,PA:raw->>planAdaptation,w5:raw->>pilokWeighted5,w5C:raw->>PilokWeighted5,grid:raw->>gridJSON,en:raw->>energySpent,dc:raw->>actualDigCount,gm:raw->_group->>members,tw1:raw->>teacherScore1,tw2:raw->>teacherScore2,tw3:raw->>teacherScore3,trv:raw->>teacherReviewedAt,cw1:raw->>commScore1,cw2:raw->>commScore2,cw3:raw->>commScore3,p1:raw->>peerTeam,p2:raw->>peerRole,p3:raw->>peerListen,pby:raw->>peerBy,ai1:raw->>aiScore1,ai2:raw->>aiScore2,ai3:raw->>aiScore3,p4:raw->>peerHT,p5:raw->>peerSM,p6:raw->>peerCM,p7:raw->>peerCZ,p8:raw->>peerNS,tsv:raw->teamStat->>v,tsn:raw->teamStat->>n';
+  var SEL_O='student_id,kind,stage_id,score,created_at,att:raw->>attemptNo,attC:raw->>AttemptNo,cmp:raw->>completed,fst:raw->>isFirstAttempt,c24:raw->>rawTotal24,PD:raw->>problemDecomposition,EE:raw->>evidenceEvaluation,ST:raw->>systemsThinking,SD:raw->>solutionDesign,CD:raw->>creativeDevelopment,PA:raw->>planAdaptation,w5:raw->>pilokWeighted5,w5C:raw->>PilokWeighted5,grid:raw->>gridJSON,en:raw->>energySpent,dc:raw->>actualDigCount,gm:raw->_group->>members,tw1:raw->>teacherScore1,tw2:raw->>teacherScore2,tw3:raw->>teacherScore3,trv:raw->>teacherReviewedAt,cw1:raw->>commScore1,cw2:raw->>commScore2,cw3:raw->>commScore3,p1:raw->>peerTeam,p2:raw->>peerRole,p3:raw->>peerListen,pby:raw->>peerBy,ai1:raw->>aiScore1,ai2:raw->>aiScore2,ai3:raw->>aiScore3,p4:raw->>peerHT,p5:raw->>peerSM,p6:raw->>peerCM,p7:raw->>peerCZ,p8:raw->>peerNS,tsv:raw->teamStat->>v,tsn:raw->teamStat->>n,tsper:raw->teamStat->per,tsok:raw->teamStat->>okAfterWrong,tsws:raw->teamStat->>wrongSubmits,tsfx:raw->teamStat->>fixAfterPeerWrong,tsup:raw->teamStat->>undoPeerCorrect';
   /* 🔴 [V.7.99.73] `tsv`/`tsn` = หลักฐานพฤติกรรมทีม (`events.raw.teamStat`) ที่ V.7.99.59 เริ่มเก็บ
      **มันอยู่ในฐานมาตั้งแต่ 30 ส.ค. แต่ไม่เคยถูกดึงลงมาเลย** — ตัวเลือกคอลัมน์ไม่เคยขอมัน
      ⇒ จอครูจึงบอกว่า "ไม่มีการประเมินด้านนี้" ทั้งที่ข้อมูลนอนอยู่ในฐานทุกแถว
@@ -4393,7 +4487,14 @@ function clsLoadStats(){
              เดิมบรรทัดนี้ทิ้ง `teamStat` ทั้งก้อนโดยไม่มีใครรู้ตัว */
           s.ev.p.push({sid:e.stage_id,sc:sc,cmp:e.cmp,att:att,t:t,
             ts:(e.tsv!=null&&e.tsv!=='')?(Number(e.tsv)||1):null,
-            tsn:(e.tsn!=null&&e.tsn!=='')?(Number(e.tsn)||null):null}); }
+            tsn:(e.tsn!=null&&e.tsn!=='')?(Number(e.tsn)||null):null,
+            tsper:(e.tsper&&e.tsper.length)?e.tsper:null,
+            tsok:(e.tsok!=null&&e.tsok!=='')?Number(e.tsok):null,
+            tsws:(e.tsws!=null&&e.tsws!=='')?Number(e.tsws):null,
+            /* ⚠️ [PLAN] เตือนไว้: แถว v1 **ไม่มีคีย์สองตัวนี้ในโครงเลย** — ต้องแยก "ไม่มีช่อง" ออกจาก "มีช่องแต่เป็น 0"
+               `null` = ไม่มีช่อง (ไม่มีหลักฐาน) · `0` = มีช่องและวัดได้ศูนย์จริง */
+            tsfx:(e.tsfx!=null&&e.tsfx!=='')?Number(e.tsfx):null,
+            tsup:(e.tsup!=null&&e.tsup!=='')?Number(e.tsup):null}); }
         else if(e.kind==='boss'){ if(sc>30) sc=30; s.ev.b.push({sc:sc,att:att,t:t}); }
         else if(e.kind==='capstone'){ if(sc>s.cap)s.cap=sc;
           s.ev.c.push({c24:(e.c24!=null&&e.c24!=='')?e.c24:sc,att:att,fst:e.fst,cmp:e.cmp,t:t,PD:e.PD,EE:e.EE,ST:e.ST,SD:e.SD,CD:e.CD,PA:e.PA,
@@ -4434,7 +4535,28 @@ function clsLoadStats(){
     for(var k in stats){ var s=stats[k], sum=0;
       /* [V.7.99.62 · คำสั่งครู] ข้าม '8' — คะแนนสอบด่านบอสไม่ใช่คะแนนเก็บอีกต่อไป
          (ค่าของบอสยังคำนวณแยกอยู่ด้านล่างในตัวแปร s.boss ตามกติกาครั้งที่ 1-2 เหมือนเดิม) */
-      for(var st2 in s.pb){ if(st2==='8') continue; sum+=s.pb[st2]; }
+      /* 🔴 [V.7.99.74 · ครูแจ้ง "คะแนนเก็บบางคนเกิน 130"] เดิมบรรทัดนี้บวก **ทุกคีย์ที่โผล่ใน `pb`**
+         โดยกันออกแค่ด่านบอส — **ไม่มีรายชื่อด่านมาคุมเลย**
+         ตัวโหลด (`:33276`) ตัดเพดานรายด่านไว้ที่ 10 ⇒ **`stage_id` แปลกปลอม 1 ตัว = +10 คะแนน**
+         ด่านจริงที่นับ 13 ด่าน × 10 = **130 พอดีเป๊ะ** ⇒ เกิน 130 = มีคีย์นอกรายชื่อปนอยู่ในฐาน
+         (คีย์เก่าที่เปลี่ยนชื่อ · ด่านทดลอง · หรือข้อมูลภาค 2 ที่รอดตัวกรอง `v_events_p1`)
+
+         📌 นี่คือโรคเดียวกับตัวหาร `TOTAL_STAGES=12` ที่ผมแก้ไปแล้วในไฟล์นี้ และเขียนกำกับไว้เองว่า
+            *"ตอนนี้ผูกกับรายชื่อด่านจริง ตัวเลขจึงเกินไม่ได้อีก"* — **แต่ไม่ได้ทำแบบเดียวกันกับตัวรวมนี้**
+         ⇒ ผูกกับ `IND_ORDER` (รายชื่อเดียวกับที่ตารางด่านใช้ · ตรงกับ `SM_STAGES` ครบทุกคีย์)
+         ⛔ และของที่ถูกตัดออก **ห้ามหายเงียบ** (STD-001 ข้อ 3) — เก็บไว้รายงานบนจอครู */
+      var _IND=(typeof IND_ORDER!=='undefined'&&IND_ORDER&&IND_ORDER.length)?IND_ORDER:null;
+      var _CNT=null;
+      if(_IND){ _CNT={}; _IND.forEach(function(k){ if(String(k)!=='8') _CNT[String(k)]=1; }); }
+      else console.warn('[คะแนนเก็บ] อ่าน IND_ORDER ไม่ได้ — ถอยไปใช้วิธีเดิม (อาจเกิน 130)');
+      s.pbExtra=null;
+      for(var st2 in s.pb){
+        if(st2==='8') continue;
+        if(_CNT&&!_CNT[String(st2)]){                       /* คีย์นอกรายชื่อด่านจริง */
+          (s.pbExtra=s.pbExtra||{})[st2]=s.pb[st2]; continue;
+        }
+        sum+=s.pb[st2];
+      }
       s.collected=Math.round(sum*100)/100;
       s.pbN=0; for(var st3 in s.pb){ if(st3!=='8') s.pbN++; }   /* มีหลักฐานรายด่านสดกี่ด่าน */
       /* [V.7.99.69 · มติครู 1 ก.ย. 2569 "ทาง ข" — สอบบอสครั้งที่ ≥2 คือการสอบซ่อม]
@@ -4523,7 +4645,8 @@ function clsStatOf(stu){
      ⛔ AUDIT สั่งไว้ตรง ๆ ว่า "ห้ามกลืนรวมกับอีก 27 คนเงียบ ๆ" — *"ไม่รู้ครั้งที่" ≠ "รู้ครั้งที่จากเวลา"*
      ธงติดเฉพาะเมื่อใช้ค่าสดจาก events จริง (bossN>0) — ค่าที่ย้ายมาจากฐานไม่ผ่านสูตรนี้ จึงไม่ติดธง */
   var bossTimeOrder=!!(s&&s.bossN>0&&s.bossNoAtt);
-  return { collected:col, collectedOldScale:colOld, boss:boss, bossTimeOrder:bossTimeOrder, cap:s?s.cap:0, plays:s?s.plays:0, last:s?s.last:0,
+  return { collected:col, collectedOldScale:colOld, pbExtra:(s&&s.pbExtra)||null,
+    boss:boss, bossTimeOrder:bossTimeOrder, cap:s?s.cap:0, plays:s?s.plays:0, last:s?s.last:0,
     v2:(s&&s.v2)||null, c6:(s&&s.c6)||null, legacy:(s&&s.legacy)||null, shared:!!(s&&s.shared), gmem:(s&&s.gmem)||null,
     gmismatch:(s&&s.gmismatch)||0, has:(s&&s.plays>0)||col>0||boss>0 };
 }
@@ -4833,7 +4956,7 @@ function gpStdQdimStages(k){
   return IND_ORDER.filter(function(s){ return set[s]; });
 }
 /* เพดานระดับของแต่ละด้าน — ยกมาจากพฤติกรรมจริงของเครื่องคิดคะแนน ไม่ใช่ที่เอกสารเดาไว้:
-   HT ยกเว้นเพดาน (capExempt เพราะหลักฐานรวมกว่า 90 ชิ้น) · CM เพดานคงที่ระดับ 4 (หลักฐาน 3 ชิ้น)
+   [V.7.99.74 · ADR-012] HT **เลิกยกเว้นเพดานแล้ว** — อยู่ใต้กติกา 4/8/15 เหมือนทุกด้าน · CM เพดานคงที่ระดับ 4 (หลักฐาน 3 ชิ้น)
    SM/NS/CZ ใช้เพดานตามปริมาณหลักฐาน EV_L4/EV_L5/EV_L6 ผ่าน pack() */
 var GP_STD_CAPMODE={HT:'exempt',CM:'fixed4',SM:'evn',NS:'evn',CZ:'evn'};
 /* สร้างรายการทั้งชุดที่จะส่ง — ฟังก์ชันบริสุทธิ์ ไม่ยิงเน็ต เทสต์เรียกตรงได้ */
@@ -5282,7 +5405,13 @@ function _clsPubEventsToStats(evs, stats){
               ซึ่งถูกต้องแล้ว (แปลว่า "มองไม่เห็น" ไม่ใช่ "ไม่มี") และไม่ทำให้หน้าจอล้ม */
         st.ev.p.push({sid:e.stage_id,sc:sc,cmp:raw.completed,att:att,t:t,
           ts:(raw.teamStat&&raw.teamStat.v!=null)?(Number(raw.teamStat.v)||1):null,
-          tsn:(raw.teamStat&&raw.teamStat.n!=null)?(Number(raw.teamStat.n)||null):null}); }
+          tsn:(raw.teamStat&&raw.teamStat.n!=null)?(Number(raw.teamStat.n)||null):null,
+          tsper:(raw.teamStat&&raw.teamStat.per&&raw.teamStat.per.length)?raw.teamStat.per:null,
+          tsok:(raw.teamStat&&raw.teamStat.okAfterWrong!=null)?Number(raw.teamStat.okAfterWrong):null,
+          tsws:(raw.teamStat&&raw.teamStat.wrongSubmits!=null)?Number(raw.teamStat.wrongSubmits):null,
+          /* `in` ไม่ใช่ `!=null` — ต้องรู้ว่า "มีช่องไหม" ไม่ใช่ "ค่าว่างไหม" */
+          tsfx:(raw.teamStat&&('fixAfterPeerWrong' in raw.teamStat))?Number(raw.teamStat.fixAfterPeerWrong):null,
+          tsup:(raw.teamStat&&('undoPeerCorrect' in raw.teamStat))?Number(raw.teamStat.undoPeerCorrect):null}); }
       else if(e.kind==='boss'){ if(sc>30) sc=30; st.ev.b.push({sc:sc,att:att,t:t}); }
       else if(e.kind==='capstone'){ if(sc>st.cap) st.cap=sc;
         st.ev.c.push({c24:(raw.rawTotal24!=null&&raw.rawTotal24!=='')?raw.rawTotal24:sc,att:att,fst:raw.isFirstAttempt,cmp:raw.completed,t:t,
@@ -5471,7 +5600,7 @@ function clsAchLevel(score, full, cuts){
     lv: v>=cuts[6]?6 : v>=cuts[5]?5 : v>=cuts[4]?4 : v>=cuts[3]?3 : 0 };
   return { pct:Math.round(pct*10)/10, lv: pct>=80?6 : pct>=70?5 : pct>=60?4 : pct>=50?3 : 0 };
 }
-function clsAchCell(score, full, bg, extra, cuts, oldScale, timeOrder){
+function clsAchCell(score, full, bg, extra, cuts, oldScale, timeOrder, extraKeys){
   var a=clsAchLevel(score, full, cuts);
   var base='text-align:center;background:'+bg+';'+(extra||'');
   if(!a) return '<td style="'+base+'"><span class="muted">–</span></td>';
@@ -5481,6 +5610,13 @@ function clsAchCell(score, full, bg, extra, cuts, oldScale, timeOrder){
      แต่ต้องบอกครูว่ากำลังดูอะไรอยู่ · ต่อท้าย title ที่มีอยู่แล้ว = ไม่เพิ่มองค์ประกอบบนจอ
      ⇒ ไม่มีทางแตะ ADR-003 · ค่าเก่าจะถูกคำนวณใหม่ตอน [Code] ทำงานฝั่งฐาน (กติกาคำนวณคู่) */
   if(oldScale) tip += ' · ⚠️ เลขนี้มาจากฐานข้อมูลที่บันทึกด้วยสเกลเก่า (เต็ม 160 รวมคะแนนด่านบอส) ยังไม่ได้คำนวณใหม่ตามสเกล 130';
+  /* 🔴 [V.7.99.74] ด่านนอกรายชื่อที่ถูกกันออกจากคะแนนเก็บ — **ห้ามหายเงียบ** (STD-001 ข้อ 3)
+     ถ้าไม่บอก ครูจะเห็นแค่ว่าคะแนนลดลงจากเมื่อวาน โดยไม่รู้ว่าเพราะอะไร */
+  if(extraKeys){ var _ek=Object.keys(extraKeys);
+    if(_ek.length) tip += ' · ⚠️ กันด่านนอกรายชื่อออกจากคะแนนเก็บ '+_ek.length+' ด่าน: '+
+      _ek.map(function(k){ return k+' ('+(Math.round(Number(extraKeys[k])*10)/10)+')'; }).join(' · ')+
+      ' — ด่านเหล่านี้ไม่อยู่ในรายชื่อ 13 ด่านที่นับคะแนนเก็บ ถ้าเป็นชื่อที่ไม่คุ้น ให้แจ้งผู้ดูแลระบบ';
+  }
   /* [V.7.99.71 · เงื่อนไขผูกพันของ AUDIT] เด็กที่คะแนนสอบคิดจาก "ลำดับเวลา" แทน "เลขครั้ง"
      ต้องเห็นได้บนจอ **โดยไม่ต้องเอาเมาส์ไปชี้** — tooltip อย่างเดียวยังนับว่าเงียบ
      ⛔ ห้ามใช้สีแดง/คำว่า "ผิดพลาด" — เด็กกลุ่มนี้ไม่ได้ทำอะไรผิด ระบบยุคเก่าต่างหากที่ไม่บันทึกเลขครั้ง */
@@ -6569,7 +6705,7 @@ function clsScoresHtml(r){
       '<td><b>'+esc((s.first_name||'')+' '+(s.last_name||''))+'</b>'+(s.character_name?' <span style="font-size:10.5px;color:#7c3aed">🎮 '+esc(s.character_name)+'</span>':'')+grpChip+
         (clsIsActive(s)?'':' <span title="ครูปิดการใช้งานไว้ — ข้อมูลอยู่ครบ แต่ไม่ถูกนับในยอดรวม/ค่าเฉลี่ย/กระดานอันดับ เปิดกลับได้ที่หน้าจัดการห้อง" style="font-size:10.5px;background:#fee2e2;color:#b91c1c;border-radius:6px;padding:1px 6px">⏸ ปิดใช้งาน</span>')+'</td>'+
       /* [V.7.99.62] เลิกส่ง cuts (arg 5 = null) · ส่งธง "สเกลเก่า" เป็น arg 6 แทน */
-      clsAchCell(t.collected, CLS_MAX_COLLECTED, ACH_BG, '', null, t.collectedOldScale)+
+      clsAchCell(t.collected, CLS_MAX_COLLECTED, ACH_BG, '', null, t.collectedOldScale, false, t.pbExtra)+
       clsAchCell(t.boss, CLS_MAX_BOSS, ACH_BG, 'border-right:2px solid #fde68a;', null, false, t.bossTimeOrder)+
       /* [V.7.71 ข้อ 10] สมรรถนะหลัก 6 ด้าน — คอลัมน์ละด้าน แสดง % + สีตามระดับ · [V.7.77] กดที่ช่องไหน = เห็นคะแนนรายด้านย่อยของด้านนั้น */
       clsCore6Cells(t, s.id)+
