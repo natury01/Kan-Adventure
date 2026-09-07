@@ -218,7 +218,7 @@
 </style>
 <script>/* [ปลูกโดย build_repo.py] เลขรุ่นจาก game.html ที่เดียว
    ถ้าไม่มีบรรทัดนี้ ท่อส่งขึ้นเว็บกลางจะเงียบทั้งเส้นโดยไม่มีข้อความเตือน */
-var GAME_VERSION = 'V.7.99.71-IX2050-2569.100';</script>
+var GAME_VERSION = 'V.7.99.73-IX2050-2569.100';</script>
 </head>
 <body>
 
@@ -3756,14 +3756,45 @@ var CORE6ENG = (function(){
          (ผลเพื่อน/ครูยังเก็บครบและแสดงในหน้าเทียบผล เพื่อให้ครูใช้ตัดสินเองได้)
        ด่านที่เล่นร่วมกันจริงจะมาในภาค 2 (Kan Adventure 2)
        ============================================================================ */
-    out.TW={ st:'none', pct:null, noAssess:true, n:0,
-      dims:TWD.map(function(lbl,i){ var base=[];
-        if(pr.length){ var a=[q1,q2,q3][i]/pr.length; base=[]; }
-        return mkDim(lbl,TWC[i],base); }),
-      parts:(pr.length?[q1,q2,q3].map(function(x,i){ var a=x/pr.length;
-        return { label:TWQ[i]+' — เพื่อนประเมิน '+pr.length+' คน (หลักฐานประกอบ)', pct:Math.round(a/4*1000)/10, txt:(Math.round(a*10)/10)+'/4' }; }):[]),
-      src:'บทเรียนนี้ไม่มีการประเมินด้านการทำงานเป็นทีม — เกมภาค 1 ไม่ได้เก็บหลักฐานการทำงานร่วมกันเป็นข้อมูล'+
-          (pr.length||kruTW!=null?' · มีเพียงหลักฐานประกอบ ('+(pr.length?('เพื่อนประเมิน '+pr.length+' คน'):'')+(pr.length&&kruTW!=null?' และ ':'')+(kruTW!=null?'ครูสังเกต':'')+') ดูได้ที่หน้าเทียบผล และครูตัดสินระดับเองได้ที่นั่น':'') };
+    /* ════════════════════════════════════════════════════════════════════════
+       🔴 [V.7.99.73 · มติครู 7 ก.ย.] เดิมบรรทัดนี้คือค่าตายตัว `st:'none', noAssess:true, n:0`
+       มติครูคำต่อคำ: *"ถ้าในเกมมีการเก็บข้อมูลด้านนี้ มีแหล่งหลักฐานด้านนี้ แต่ไม่มีนักเรียน
+       เคยทำคะแนนได้ ต้องแสดงผลเหมือนด้านอื่นว่าหลักฐานไม่เพียงพอ ไม่ใช่ ไม่มีการประเมิน"*
+
+       ⇒ `noAssess` (= "ระบบไม่ได้วัดด้านนี้") **ใช้กับ TW ไม่ได้อีกต่อไป**
+         เพราะตั้งแต่ V.7.99.59 เกมเก็บ `teamStat` ขึ้นฐานจริงทุกครั้งที่เล่นกลุ่ม ≥2 คน
+         ความจริงคือ "มีแหล่งหลักฐาน แต่ยังไม่มีเกณฑ์ตัดสิน" ซึ่งเป็นคนละอย่างกันโดยสิ้นเชิง
+         — อันแรกโทษเครื่องมือ อันหลังบอกตรง ๆ ว่างานยังไม่เสร็จ
+
+       ⛔ สิ่งที่ยังห้ามทำ และรุ่นนี้ไม่ได้ทำ: ตัดสิน "ระดับ" ของ TW
+          `pct` ส่งเข้า pack() เป็น `null` เสมอ ⇒ pack คืน `st:'partial'` เสมอ
+          ⇒ **TW ไม่มีทางขึ้นระดับได้เลยทางโครงสร้าง** จนกว่าเกณฑ์ tw1-3 (งาน ค1 ของ [Code])
+            จะเสร็จและมีคนใส่สูตรตรงนี้ — หลัก CBE "ห้ามตัดสินระดับจากหลักฐานประกอบ" ยังอยู่ครบ
+          📌 จุดต่อสำหรับ ค1 อยู่ที่บรรทัด `var twPct=null;` ข้างล่างจุดเดียว
+       ════════════════════════════════════════════════════════════════════════ */
+    var twRows=(ev.p||[]).filter(function(r){ return r&&r.ts!=null; });
+    var twN=twRows.length;
+    /* แยกยุคของก้อนข้อมูลไว้ให้เห็น — AUDIT เตือนว่า v1/v2/v3 เทียบตรง ๆ ไม่ได้
+       ตรงนี้แค่ "นับชิ้น" ซึ่งไม่ขึ้นกับยุค แต่บันทึกยุคไว้กันคนรุ่นหลังเผลอเอาไปเฉลี่ยข้ามยุค */
+    var twEra={}; twRows.forEach(function(r){ var k='v'+r.ts; twEra[k]=(twEra[k]||0)+1; });
+    var twEraTxt=Object.keys(twEra).sort().map(function(k){ return k+' '+twEra[k]+' รอบ'; }).join(' · ');
+    var twPct=null;   /* 🔒 ค1 ยังไม่เสร็จ — ห้ามใส่ตัวเลขตรงนี้จนกว่า AUDIT จะรับรองเกณฑ์ tw1-3 */
+    var twSrc=(twN
+        ? 'หลักฐานหลัก: พฤติกรรมการทำงานร่วมกันที่เกมบันทึกเอง (teamStat) จากการเล่นกลุ่ม 2 คนขึ้นไป '+twN+' รอบ'+
+          (twEraTxt?(' ('+twEraTxt+')'):'')
+        : 'หลักฐานหลัก: พฤติกรรมการทำงานร่วมกันจากการเล่นกลุ่ม 2 คนขึ้นไป — นักเรียนคนนี้ยังไม่มีรอบเล่นกลุ่มที่บันทึกไว้')+
+      ' · เกมเก็บข้อมูลด้านนี้อยู่จริงตั้งแต่ V.7.99.59 แต่ยังไม่มีเกณฑ์ตัดสินระดับ ⇒ ระบบรายงานปริมาณหลักฐาน ไม่ตัดสินระดับ'+
+      (pr.length||kruTW!=null?' · หลักฐานประกอบ ('+(pr.length?('เพื่อนประเมิน '+pr.length+' คน'):'')+(pr.length&&kruTW!=null?' และ ':'')+(kruTW!=null?'ครูสังเกต':'')+') ดูได้ที่หน้าเทียบผล และครูตัดสินระดับเองได้ที่นั่น':'');
+    out.TW=pack(twPct, twN, EV_L4, twSrc);
+    /* ธงบอกว่า "ว่างเพราะยังไม่มีเกณฑ์" ไม่ใช่ "ว่างเพราะไม่มีของ" — จอครูกับเว็บกลางอ่านธงนี้
+       ⚠️ ต้องแยกจาก `noAssess` ให้ขาด ไม่งั้นก็กลับไปโทษเครื่องมือเหมือนเดิม */
+    out.TW.awaitRule=true;
+    out.TW.twEra=twEra;
+    out.TW.dims=TWD.map(function(lbl,i){ return mkDim(lbl,TWC[i],[]); });
+    out.TW.parts=(pr.length?[q1,q2,q3].map(function(x,i){ var a=x/pr.length;
+      return { label:TWQ[i]+' — เพื่อนประเมิน '+pr.length+' คน (หลักฐานประกอบ)', pct:Math.round(a/4*1000)/10, txt:(Math.round(a*10)/10)+'/4' }; }):[]);
+    if(twN) out.TW.parts.unshift({ label:'รอบเล่นกลุ่มที่บันทึกพฤติกรรมทีม (หลักฐานหลัก · ยังไม่มีเกณฑ์ตัดสิน)',
+      pct:null, txt:twN+' รอบ'+(twEraTxt?(' — '+twEraTxt):'') });
     if(kruTW!=null) out.TW.parts.push({ label:'ครูประเมินจากการสังเกต (หลักฐานประกอบ)', pct:Math.round(kruTW/4*1000)/10, txt:(Math.round(kruTW*100)/100)+'/4' });
     if(peerPct!=null) out.TW.peerPct=Math.round(peerPct*10)/10;
     if(kruTW!=null) out.TW.kruNote='ครูสังเกตด้านทีมเฉลี่ย '+(Math.round(kruTW*100)/100)+'/4';
@@ -4311,7 +4342,14 @@ function clsLoadStats(){
   function S(id){ return stats[id]||(stats[id]={pb:{},boss:0,bossN:0,cap:0,plays:0,last:0,ev:{q:[],p:[],c:[],k:[],b:[],pr:[],kru:[]}}); }
   /* [เฟส 3d] ดึงข้อมูลละเอียดพอคิดสูตร Dashboard V.2 (A/B/C/D) ได้ครบ — แยก 2 คำขอ: คำถามรายข้อ (แถวเยอะ ฟิลด์น้อย) กับที่เหลือ (แถวน้อย ฟิลด์เยอะ) */
   var SEL_Q='student_id,stage_id,question_id,correct,credit,created_at,att:raw->>attemptNo,sess:raw->>sessionId,cw:raw->>creditWeight,asb:raw->>assistedBy';
-  var SEL_O='student_id,kind,stage_id,score,created_at,att:raw->>attemptNo,attC:raw->>AttemptNo,cmp:raw->>completed,fst:raw->>isFirstAttempt,c24:raw->>rawTotal24,PD:raw->>problemDecomposition,EE:raw->>evidenceEvaluation,ST:raw->>systemsThinking,SD:raw->>solutionDesign,CD:raw->>creativeDevelopment,PA:raw->>planAdaptation,w5:raw->>pilokWeighted5,w5C:raw->>PilokWeighted5,grid:raw->>gridJSON,en:raw->>energySpent,dc:raw->>actualDigCount,gm:raw->_group->>members,tw1:raw->>teacherScore1,tw2:raw->>teacherScore2,tw3:raw->>teacherScore3,trv:raw->>teacherReviewedAt,cw1:raw->>commScore1,cw2:raw->>commScore2,cw3:raw->>commScore3,p1:raw->>peerTeam,p2:raw->>peerRole,p3:raw->>peerListen,pby:raw->>peerBy,ai1:raw->>aiScore1,ai2:raw->>aiScore2,ai3:raw->>aiScore3,p4:raw->>peerHT,p5:raw->>peerSM,p6:raw->>peerCM,p7:raw->>peerCZ,p8:raw->>peerNS';
+  var SEL_O='student_id,kind,stage_id,score,created_at,att:raw->>attemptNo,attC:raw->>AttemptNo,cmp:raw->>completed,fst:raw->>isFirstAttempt,c24:raw->>rawTotal24,PD:raw->>problemDecomposition,EE:raw->>evidenceEvaluation,ST:raw->>systemsThinking,SD:raw->>solutionDesign,CD:raw->>creativeDevelopment,PA:raw->>planAdaptation,w5:raw->>pilokWeighted5,w5C:raw->>PilokWeighted5,grid:raw->>gridJSON,en:raw->>energySpent,dc:raw->>actualDigCount,gm:raw->_group->>members,tw1:raw->>teacherScore1,tw2:raw->>teacherScore2,tw3:raw->>teacherScore3,trv:raw->>teacherReviewedAt,cw1:raw->>commScore1,cw2:raw->>commScore2,cw3:raw->>commScore3,p1:raw->>peerTeam,p2:raw->>peerRole,p3:raw->>peerListen,pby:raw->>peerBy,ai1:raw->>aiScore1,ai2:raw->>aiScore2,ai3:raw->>aiScore3,p4:raw->>peerHT,p5:raw->>peerSM,p6:raw->>peerCM,p7:raw->>peerCZ,p8:raw->>peerNS,tsv:raw->teamStat->>v,tsn:raw->teamStat->>n';
+  /* 🔴 [V.7.99.73] `tsv`/`tsn` = หลักฐานพฤติกรรมทีม (`events.raw.teamStat`) ที่ V.7.99.59 เริ่มเก็บ
+     **มันอยู่ในฐานมาตั้งแต่ 30 ส.ค. แต่ไม่เคยถูกดึงลงมาเลย** — ตัวเลือกคอลัมน์ไม่เคยขอมัน
+     ⇒ จอครูจึงบอกว่า "ไม่มีการประเมินด้านนี้" ทั้งที่ข้อมูลนอนอยู่ในฐานทุกแถว
+     ✅ อ่านผ่าน `raw->teamStat->>` แบบเดียวกับคอลัมน์อื่นทั้งบรรทัด ⇒ **ไม่ต้องรัน SQL เพิ่ม**
+     📌 ดึงแค่ `v` (รุ่นของก้อนข้อมูล) กับ `n` (จำนวนคนในทีม) พอสำหรับ "นับชิ้นหลักฐาน"
+        ⛔ ตั้งใจไม่ดึงตัวนับพฤติกรรมทั้งก้อน — รุ่นนี้ยังไม่ตัดสินระดับ จึงยังไม่ต้องใช้
+           และ `teamStat.v` มี 3 ยุค (v1/v2/v3) ที่ AUDIT เตือนว่าเทียบตรง ๆ ไม่ได้ */
   var p=Promise.resolve();
   chunks.forEach(function(ch){
     p=p.then(function(){ return sbEnsure(); }).then(function(){
@@ -4351,7 +4389,11 @@ function clsLoadStats(){
         if(e.kind==='progress'){ var k=String(e.stage_id||'');
           var cap=(k==='8')?30:10; if(sc>cap) sc=cap; /* [แก้คะแนนเพี้ยน] กันแถวข้อมูลสเกลเก่า (หลักร้อย) จากระบบเดิม — สูตรเดียวกับ .gs */
           if(!(k in s.pb)||sc>s.pb[k]) s.pb[k]=sc;
-          s.ev.p.push({sid:e.stage_id,sc:sc,cmp:e.cmp,att:att,t:t}); }
+          /* [V.7.99.73] แนบ "รอบนี้มีหลักฐานทีมไหม" ไปกับแถวการเล่น — `ts` = ยุคของก้อน (1/2/3)
+             เดิมบรรทัดนี้ทิ้ง `teamStat` ทั้งก้อนโดยไม่มีใครรู้ตัว */
+          s.ev.p.push({sid:e.stage_id,sc:sc,cmp:e.cmp,att:att,t:t,
+            ts:(e.tsv!=null&&e.tsv!=='')?(Number(e.tsv)||1):null,
+            tsn:(e.tsn!=null&&e.tsn!=='')?(Number(e.tsn)||null):null}); }
         else if(e.kind==='boss'){ if(sc>30) sc=30; s.ev.b.push({sc:sc,att:att,t:t}); }
         else if(e.kind==='capstone'){ if(sc>s.cap)s.cap=sc;
           s.ev.c.push({c24:(e.c24!=null&&e.c24!=='')?e.c24:sc,att:att,fst:e.fst,cmp:e.cmp,t:t,PD:e.PD,EE:e.EE,ST:e.ST,SD:e.SD,CD:e.CD,PA:e.PA,
@@ -4539,7 +4581,31 @@ function gpComp(code,r){
         evidence:'scored', decided_by:'game', system_level:null, system_score:null,
         criteria_note:'บทเรียนชุดนี้ยังไม่มีด่านที่วัดด้านนี้โดยตรง'+((r&&r.src)?(' · '+r.src):'') };
     }
-    if(r.st!=='partial'||(_pct==null&&!_n)) return null;   /* ไม่มีอะไรเลยจริง ๆ = ไม่ส่ง */
+    /* 🔴 [V.7.99.72 · ข8 สถานะ D] เดิมบรรทัดนี้คือ `return null` = **ไม่ส่งอะไรเลย**
+       ⇒ เว็บกลางไม่มีแถวของด้านนี้ แล้วขึ้นว่า "ยังไม่มีเกมวัดด้านนี้"
+       ⇒ **"เด็กคนนี้ยังไม่มีหลักฐาน" (D) ถูกอ่านเป็น "ระบบไม่ได้วัด" (C)**
+          = ย้ายความรับผิดจากช่องโหว่การเก็บข้อมูล ไปโทษว่าเครื่องมือไม่มี
+          ซึ่งเป็นคนละเรื่องกันคนละคุณสมบัติ (D เป็นของเด็ก · C เป็นของระบบ)
+       ⛔ score ต้องเป็น null **ห้ามเป็น 0** — 0 แปลว่า "วัดแล้วได้ศูนย์" ซึ่งไม่จริง
+          และจะถูกเอาไปเฉลี่ยรวมกับคนอื่น (กติกา: ไม่มีหลักฐาน = ตัดออกจากตัวหาร)
+       📌 ถ้อยคำจงใจต่างจาก C ให้ชัด: C = "บทเรียนยังไม่มีด่านที่วัด" (ระบบ)
+          D = "เกมวัดด้านนี้ได้ แต่คนนี้ยังไม่มี" (เด็ก) — อ่านแล้วต้องรู้ทันทีว่าใครเป็นเจ้าของ */
+    if(r.st!=='partial'&&r.st!=='none') return null;   /* สถานะที่ไม่รู้จักจริง ๆ = ไม่ส่ง */
+    if(_pct==null&&!_n){
+      return { code:code, score:null, level:null, level_label:null, sub_scores:null,
+        evidence:'scored', decided_by:'game', system_level:null, system_score:null,
+        criteria_note:'ยังไม่มีหลักฐานของนักเรียนคนนี้ในด้านนี้ (0 ชิ้น) — '+
+          'เกมวัดด้านนี้ได้ แต่นักเรียนยังไม่ได้เล่นส่วนที่เก็บหลักฐาน'+((r&&r.src)?(' · '+r.src):'') };
+    }
+    /* 🔴 [V.7.99.73] ด้านที่ "มีหลักฐานแล้วแต่ยังไม่มีเกณฑ์" ต้องไม่ถูกรายงานว่าหลักฐานไม่พอ
+       เพราะสองอย่างนี้สั่งงานคนละคน: หลักฐานไม่พอ = ให้เด็กเล่นเพิ่ม · ไม่มีเกณฑ์ = ให้เราทำงานให้เสร็จ
+       ⛔ score ยังเป็น null และ level ยังเป็น null เหมือนเดิมทุกประการ — เปลี่ยนแค่เหตุผลที่บอก */
+    if(r&&r.awaitRule){
+      return { code:code, score:null, level:null, level_label:null, sub_scores:null,
+        evidence:'scored', decided_by:'game', system_level:null, system_score:null,
+        criteria_note:'เกมเก็บหลักฐานด้านนี้แล้ว '+_n+' ชิ้น แต่ยังไม่มีเกณฑ์ตัดสินระดับ ⇒ ระบบไม่ฟันธงระดับ'+
+          ((r&&r.src)?(' · '+r.src):'') };
+    }
     return { code:code, score:_pct, level:null, level_label:null, sub_scores:null,
       evidence:'scored', decided_by:'game', system_level:null, system_score:null,
       criteria_note:'หลักฐานยังไม่พอสรุประดับ — มี '+_n+' ชิ้น ต้องการอย่างน้อย '+
@@ -4547,16 +4613,25 @@ function gpComp(code,r){
   }
   /* ครู "ตัดสินระดับเอง" นับเฉพาะตอนที่ระดับต่างจากที่เอนจินคิด — ถ้าครูแค่ยืนยันของเดิมให้เป็น 'game'
      (ข้อกำชับเพิ่มเติม 11 ส.ค. ของเว็บกลาง ที่ภาค 2 เจอเคสจริง) */
+  /* [V.7.99.72] ตัวช่วยผูกช่องใหม่เข้ากับผลลัพธ์ — เติมคีย์ **เฉพาะตอนมีของจะบอก**
+     ⇒ เด็กที่หลักฐานครบทุกด้านย่อย payload เหมือนเดิมทุกไบต์ (ไม่กระทบสัญญาเดิม)
+     📌 แจ้ง [Code] แล้ว เพราะเป็นช่องใหม่ในสัญญาระหว่างเกมกับเว็บกลาง */
+  var _withNone=function(o){ if(subsNone&&subsNone.length) o.sub_no_evidence=subsNone; return o; };
   var hasKru=(r.kruFinal!=null);
   var sysLv=(r.sysLevel!=null)?r.sysLevel:null;
   var byTeacher=!!(hasKru && (sysLv==null || Number(sysLv)!==Number(r.level)));
   /* system_score ส่งได้เฉพาะตอนที่เอนจินคิดคะแนนไว้จริง — ถ้าเดิมไม่มีคะแนน clsApplyKruFinal
      จะเติม pct ประมาณการให้เพื่อแสดงผลบนหน้าจอ ค่านั้นไม่ใช่ผลวัด ห้ามส่งออกไปเด็ดขาด */
   var sysScore=(byTeacher && r.sysSt==='score' && r.pct!=null)?r.pct:null;
-  var subs=null;
+  var subs=null, subsNone=null;
   if(Array.isArray(r.dims)){
     r.dims.forEach(function(d){
-      if(!d||d.pct==null) return;                  /* ด้านย่อยที่ไม่มีหลักฐาน = ไม่ใส่คีย์ (ไม่ส่ง 0) */
+      if(!d) return;
+      /* 🔴 [V.7.99.72 · ข8] เดิมด้านย่อยที่ไม่มีหลักฐาน **หายไปเฉย ๆ** (ไม่ใส่คีย์)
+         การไม่ส่ง 0 นั้นถูกแล้วและคงไว้ — แต่ "หายไปเงียบ ๆ" กับ "บอกว่าไม่มี" ไม่เหมือนกัน
+         หลัง ADR-012 ด้านย่อยกลายเป็นตัวตัดสิน ⇒ ความเงียบตรงนี้มีราคาแล้ว
+         ⇒ คงคีย์ตัวเลขไว้เหมือนเดิมทุกประการ แล้วบอกรายชื่อตัวที่ไม่มีหลักฐาน **แยกช่อง** */
+      if(d.pct==null){ (subsNone=subsNone||[]).push(String(d.code||d.label)); return; }
       (subs=subs||{})[d.code||d.label]=d.pct;
     });
   }
@@ -4568,11 +4643,11 @@ function gpComp(code,r){
   var note=(r.src?String(r.src):'')+
     (byTeacher?((r.src?' · ':'')+'ครูตัดสินระดับเองจากการสังเกต'):'')+
     ((r.n!=null&&r.need!=null)?((r.src||byTeacher?' · ':'')+'หลักฐาน '+r.n+'/'+r.need+' ชิ้น'):'');
-  return { code:code, score:(r.pct!=null?r.pct:null), level:r.level,
+  return _withNone({ code:code, score:(r.pct!=null?r.pct:null), level:r.level,
     level_label:(CORE6_LVNAME[r.level]||null), sub_scores:subs, evidence:'scored',
     decided_by:byTeacher?'teacher':'game',
     system_level:byTeacher?sysLv:null, system_score:sysScore,
-    criteria_note:(note||null) };
+    criteria_note:(note||null) });
 }
 function gpBuildReport(stu,s){
   var ver=gpVersion(); if(!ver) return null;
@@ -5202,7 +5277,12 @@ function _clsPubEventsToStats(evs, stats){
       var sc=Number(e.score)||0;
       if(e.kind==='progress'){ var k=String(e.stage_id||''); var cap=(k==='8')?30:10; if(sc>cap) sc=cap;
         if(!(k in st.pb)||sc>st.pb[k]) st.pb[k]=sc;
-        st.ev.p.push({sid:e.stage_id,sc:sc,cmp:raw.completed,att:att,t:t}); }
+        /* [V.7.99.73] ทางนี้ได้ `raw` มาทั้งก้อน จึงอ่าน teamStat ตรง ๆ ได้
+           ⚠️ `rpc_events_public` ตัด `_group` ทิ้งที่ฝั่งฐาน — ถ้าตัด teamStat ด้วยจะได้ null
+              ซึ่งถูกต้องแล้ว (แปลว่า "มองไม่เห็น" ไม่ใช่ "ไม่มี") และไม่ทำให้หน้าจอล้ม */
+        st.ev.p.push({sid:e.stage_id,sc:sc,cmp:raw.completed,att:att,t:t,
+          ts:(raw.teamStat&&raw.teamStat.v!=null)?(Number(raw.teamStat.v)||1):null,
+          tsn:(raw.teamStat&&raw.teamStat.n!=null)?(Number(raw.teamStat.n)||null):null}); }
       else if(e.kind==='boss'){ if(sc>30) sc=30; st.ev.b.push({sc:sc,att:att,t:t}); }
       else if(e.kind==='capstone'){ if(sc>st.cap) st.cap=sc;
         st.ev.c.push({c24:(raw.rawTotal24!=null&&raw.rawTotal24!=='')?raw.rawTotal24:sc,att:att,fst:raw.isFirstAttempt,cmp:raw.completed,t:t,
@@ -5432,9 +5512,22 @@ function clsCore6Cells(t, sid){
     var isNone=(r&&r.st==='none');
     /* [V.7.99.1 ข้อ 3 ตามคำสั่งครู] ด้านที่บทเรียนนี้ไม่ได้ออกแบบมาวัด ต้องขึ้นตรง ๆ ว่า "ไม่มีการประเมินในบทเรียนนี้"
        ต่างจาก "ข้อมูลยังไม่พอ" ซึ่งแปลว่าเกมวัดได้ แต่นักเรียนยังเล่นไม่มากพอ */
+    /* 🔴 [V.7.99.72 · ข8] เดิมสถานะ D (n=0) ตกมาบรรทัดสุดท้ายได้ข้อความ "ข้อมูลยังไม่พอสรุป"
+       ซึ่งเป็นข้อความเดียวกับ B (มีแต่ไม่พอ) เป๊ะ ⇒ **ครูแยกไม่ออกว่า "ไม่มีเลย" กับ "มีแต่ไม่พอ"**
+       ซึ่งต่างกันมากในทางปฏิบัติ: B = ให้เด็กเล่นเพิ่มอีกนิด · D = เด็กยังไม่ได้แตะส่วนนั้นเลย
+       ⚠️ ใบสั่งของ AUDIT ชี้เฉพาะฝั่งที่ส่งขึ้นเว็บกลาง — ข้อนี้เจอจากการยิงทั้งสี่สถานะเทียบกันเอง */
+    var _nEv=(r&&r.n!=null)?Number(r.n):null;
+    /* 🔴 [V.7.99.73 · มติครู 7 ก.ย.] สถานะใหม่ "มีหลักฐานแล้ว รอเกณฑ์ตัดสิน"
+       ก่อนหน้านี้ด้านที่มีหลักฐานครบแต่ยังไม่มีสูตร จะตกมาได้ข้อความ "ข้อมูลยังไม่พอสรุป"
+       ⇒ **โยนความผิดให้เด็กว่าเล่นไม่พอ ทั้งที่คนที่ยังไม่เสร็จคือฝั่งเรา**
+       ⇒ แยกออกมาให้ครูเห็นว่าคอขวดอยู่ที่เกณฑ์ ไม่ใช่ที่เด็ก
+       ⚠️ ลำดับสำคัญ: `_nEv===0` ต้องมาก่อน ไม่งั้นเด็กที่ยังไม่มีหลักฐานเลย
+          จะถูกกลบด้วยข้อความ "มีหลักฐานแล้ว" ซึ่งไม่จริงสำหรับคนนั้น */
     var why=(r&&r.noAssess)?'ไม่มีการประเมินในบทเรียนนี้'
           :isNone?'ไม่มีหลักฐานด้านนี้'
           :(r&&r.st==='pending')?'รอผู้ประเมิน'
+          :(_nEv===0)?'ยังไม่มีหลักฐานของคนนี้'
+          :(r&&r.awaitRule)?'มีหลักฐานแล้ว รอเกณฑ์ตัดสิน'
           :'ข้อมูลยังไม่พอสรุป';
     return '<td style="'+base+'"'+click+' title="'+esc(tip+' — '+why+(r&&r.src?('\n'+r.src):'')+'\n(กดเพื่อดูรายละเอียด)')+'">'+
       '<span style="color:#cbd5e1;font-weight:800">'+(isNone?'—':'·')+'</span>'+
@@ -6007,6 +6100,9 @@ function clsCmpDetail(st,d,c6,open){
     (rr.src?'<div class="muted" style="font-size:11.5px;margin-top:6px">📌 หลักฐานที่ใช้: '+esc(rr.src)+'</div>':'')+
     (rr.capped&&rr.capNote?'<div style="font-size:11.5px;margin-top:4px;color:#b45309">🔒 '+esc(rr.capNote)+'</div>':'')+
     (rr.noAssess?'<div style="font-size:11.5px;margin-top:4px;color:#64748b">— บทเรียนนี้ไม่มีการประเมินด้านนี้จากเกม ครูตัดสินระดับเองได้จากหลักฐานประกอบและการสังเกตในชั้นเรียน</div>':'')+
+    /* [V.7.99.73] ด้านที่ "มีของแต่ยังไม่มีเกณฑ์" ต้องไม่เงียบ — และครูยังตัดสินเองได้เหมือนเดิม
+       (เดิมประโยคชวนให้ครูตัดสินเองผูกกับ noAssess ตัวเดียว พอ TW เลิกเป็น noAssess มันจะหายไปด้วย) */
+    (rr.awaitRule?'<div style="font-size:11.5px;margin-top:4px;color:#7c2d12;background:#fff7ed;border-radius:6px;padding:5px 8px">⏳ <b>เกมเก็บหลักฐานด้านนี้อยู่จริง แต่ยังไม่มีเกณฑ์ตัดสินระดับ</b> — ระบบจึงไม่ฟันธงระดับให้ ครูตัดสินเองได้จากปุ่มด้านล่าง โดยดูหลักฐานประกอบ (เพื่อนประเมิน/ครูสังเกต) และการสังเกตในชั้นเรียนประกอบ</div>':'')+
     (rr.kruFinal!=null?'<div style="font-size:11.5px;margin-top:4px;color:#1d4ed8">🔵 ครูตัดสินไว้แล้วเป็น'+(rr.kruFinal===0?' "ไม่ประเมินด้านนี้"':(' ระดับ '+rr.kruFinal))+
         (rr.sysLevel!=null?(' (ระบบคำนวณได้ระดับ '+rr.sysLevel+')'):'')+(rr.kruFinalAt?(' · '+esc(String(rr.kruFinalAt).slice(0,10))):'')+'</div>':'')+
     '<div style="margin-top:10px;padding-top:9px;border-top:1px dashed var(--line)">'+
@@ -6568,6 +6664,55 @@ function clsScoresHtml(r){
         [[6,'ดีเยี่ยม','≥80%'],[5,'ดี','≥70%'],[4,'พอใช้','≥60%'],[3,'ผ่าน','≥50%']].map(function(A){
           return '<b style="color:'+achClr(A[0])+'">'+A[2]+' = '+A[1]+'</b>'; }).join(' · ')+
         ' · ต่ำกว่า 50% = '+ACH_NONE+' (สีเทา)</div>'+
+      /* 🔴 [V.7.99.72 · ข8 §๔ — หน้าที่คู่ที่ติดมากับกฎสถานะ D]
+         AUDIT เขียนไว้ตรง ๆ ว่ากฎ "ไม่มีหลักฐาน" ปกป้องเด็ก **แต่ถ้าใช้เดี่ยว ๆ
+         มันจะกลายเป็นที่ซ่อนช่องโหว่ของการเก็บข้อมูล** เพราะ *"ไม่มีหลักฐาน"
+         อ่านแล้วไม่เจ็บเท่าคะแนนต่ำ* ⇒ บังคับว่าทุกที่ที่รายงานผล
+         **ต้องมีตัวเลขคู่กันเสมอ: ตัดสินได้กี่คน จากกี่คน ร้อยละเท่าไร**
+         (ของจริงที่ทำให้ข้อนี้จำเป็น: `ht3` ครอบคลุม 21 จาก 97 คน = 22%
+          ถ้ารายงานแค่ "ไม่มีหลักฐาน" ไม่มีใครรู้ว่าช่องว่างใหญ่ขนาดนี้)
+         ⛔ ตัวหารคือ "นักเรียนในตารางนี้" ไม่ใช่ "คนที่มีข้อมูล" — ไม่งั้นร้อยละจะสวยขึ้นเอง
+            โดยการตัดคนที่เป็นปัญหาออกจากตัวหาร ซึ่งเป็นสิ่งที่กฎข้อนี้ตั้งมาเพื่อกัน */
+      (function(){
+        if(!studs.length) return '';
+        var rows=CORE6.map(function(c){
+          /* 🔴 [V.7.99.73] TW เพิ่งเข้าแถบนี้เป็นครั้งแรก (เดิมถูกกันออกด้วย noAssess)
+             ⇒ ต้องแยก "มีของแต่ยังไม่มีเกณฑ์" ออกจาก "มีแต่ไม่พอ" ให้ขาด
+                ไม่งั้นครูอ่านว่าเด็กเล่นไม่พอ แล้วไปไล่ให้เด็กเล่นเพิ่ม — ซึ่งแก้ไม่ได้ด้วยการเล่นเพิ่ม
+             ⛔ ยังคงกติกาเดิมทุกข้อ: ตัวหาร = นักเรียนทุกคนในตาราง · ไม่มีใครถูกนับเป็น 0 */
+          var k=c[0], ok=0, thin=0, none=0, na=0, wait=0;
+          studs.forEach(function(st){
+            var r=(clsStatOf(st).c6||{})[k];
+            if(!r){ none++; return; }
+            if(r.noAssess||r.st==='none'){ na++; return; }
+            if(r.st==='score'&&r.level!=null){ ok++; return; }
+            if(r.awaitRule){ if(Number(r.n||0)>0) wait++; else none++; return; }
+            if(Number(r.n||0)>0) thin++; else none++;
+          });
+          return { k:k, name:CORE6_SHORT[k]||c[1], ok:ok, thin:thin, none:none, na:na, wait:wait,
+                   pct:Math.round(ok/studs.length*1000)/10 };
+        });
+        var live=rows.filter(function(x){ return x.na<studs.length; });
+        if(!live.length) return '';
+        var worst=live.slice().sort(function(a,b){ return a.pct-b.pct; })[0];
+        return '<div style="width:100%;margin-top:7px;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:7px 10px;font-size:11.5px;color:#4c1d95">'+
+          '<b>📊 ความครอบคลุมของหลักฐาน — ตัดสินได้กี่คนจาก '+studs.length+' คน</b>'+
+          '<div style="margin-top:4px;display:flex;gap:10px;flex-wrap:wrap">'+
+          live.map(function(x){
+            var col=x.pct>=80?'#15803d':x.pct>=50?'#b45309':'#b91c1c';
+            /* [V.7.99.73] ⏳ = ด้านที่คอขวดอยู่ที่ "ยังไม่มีเกณฑ์" ไม่ใช่ที่เด็ก */
+            return '<span title="'+esc(x.name+' — ตัดสินได้ '+x.ok+' · มีแต่ไม่พอ '+x.thin+' · ยังไม่มีหลักฐาน '+x.none+' คน'+(x.wait?(' · มีหลักฐานแล้วแต่รอเกณฑ์ตัดสิน '+x.wait+' คน'):''))+'">'+
+              esc(x.k)+(x.wait?' <span title="รอเกณฑ์ตัดสิน">⏳</span>':'')+' <b style="color:'+col+'">'+x.ok+'/'+studs.length+'</b> <span style="color:'+col+'">('+x.pct+'%)</span></span>';
+          }).join(' · ')+'</div>'+
+          '<div style="margin-top:4px;font-size:11px">🔎 ด้านที่ครอบคลุมน้อยที่สุดคือ <b>'+esc(worst.name)+' '+worst.pct+'%</b> — '+
+          'ตัวเลขนี้บอก<b>ช่องว่างของการเก็บข้อมูล</b> ไม่ใช่ความสามารถของเด็ก '+
+          '⛔ เด็กที่ยังไม่มีหลักฐาน<b>ไม่ถูกนับเป็น 0</b> และไม่ถูกเอาไปเฉลี่ยกับใคร'+
+          /* [V.7.99.73] ถ้าด้านที่แย่ที่สุดแย่เพราะ "ยังไม่มีเกณฑ์" ต้องบอกตรง ๆ
+             ไม่งั้นครูจะไปไล่ให้เด็กเล่นเพิ่ม ทั้งที่เล่นเพิ่มเท่าไรตัวเลขก็ไม่ขยับ */
+          (worst.wait?(' <br>⏳ <b>'+esc(worst.name)+' ว่างเพราะยังไม่มีเกณฑ์ตัดสิน ไม่ใช่เพราะเด็กเล่นไม่พอ</b> — '+
+            'มี '+worst.wait+' คนที่เกมเก็บหลักฐานไว้ครบแล้ว รอเพียงเกณฑ์ ⇒ ให้เด็กเล่นเพิ่มไม่ทำให้ตัวเลขนี้ขยับ'):'')+
+          '</div></div>';
+      })()+
       /* [V.7.99.71 · เงื่อนไขผูกพันของ AUDIT] บอก "จำนวนคน" ตรง ๆ ไม่ให้ครูต้องไล่นับเครื่องหมายเอง
          นี่คือสิ่งที่ทำให้ธง "ไม่เงียบ" จริง และเป็นเลขที่เล่มต้องใช้ ("N จาก M ใช้ลำดับเวลาแทน") */
       (function(){
