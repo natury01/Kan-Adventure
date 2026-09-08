@@ -218,7 +218,7 @@
 </style>
 <script>/* [ปลูกโดย build_repo.py] เลขรุ่นจาก game.html ที่เดียว
    ถ้าไม่มีบรรทัดนี้ ท่อส่งขึ้นเว็บกลางจะเงียบทั้งเส้นโดยไม่มีข้อความเตือน */
-var GAME_VERSION = 'V.7.99.79-IX2050-2569.101';</script>
+var GAME_VERSION = 'V.7.99.80-IX2050-2569.102';</script>
 </head>
 <body>
 
@@ -3845,27 +3845,38 @@ var CORE6ENG = (function(){
        ⛔ `rescues` ไม่ถูกใช้ — มันครอบ `undoPeerCorrect` (`:14361`) จะกลายเป็นให้คะแนนการรื้อของเพื่อน
        ════════════════════════════════════════════════════════════════════ */
     var tw1v=[], tw2v=[], tw3v=[];
+    /* 🔴 [V.7.99.80 · [AUDIT] ชี้ขาด 8 ก.ย. 15:0x · [HUB] จับได้ 8 ก.ย. เช้า]
+       **ปริมาณหลักฐาน = จำนวน "รอบเล่นกลุ่ม" ที่ให้ข้อสังเกตในด้านย่อยนั้น ไม่ใช่จำนวนสัญญาณ**
+       เดิม `twEvN` บวกความยาวอาเรย์ตรง ๆ แต่ tw2 มีสองสัญญาณที่ push เข้าอาเรย์เดียวกัน
+       ⇒ หนึ่งรอบผลิตข้อสังเกต 2 ชิ้นในด้านย่อยเดียว ⇒ เล่นกลุ่ม 5 รอบได้ 15 แทนที่จะเป็น 10
+       ⇒ ชนเพดานระดับ 6 พอดี ทั้งที่หลักฐานจริงพอแค่ระดับ 5
+       🔑 นี่คือ "พอดี 1 ระดับ" ที่ครูสังเกตว่าหลวมไป ⇒ แก้ตัวนับ ไม่ต้องขยับเกณฑ์
+       ⛔ ไม่แตะบันได tw1-3 · ไม่แตะ EV_L4/L5/L6 · ไม่แตะสูตรค่า — ค่า tw1/tw2/tw3 เท่าเดิมทุกตัว */
+    var tw1n=0, tw2n=0, tw3n=0;
     twRows.forEach(function(r){
       var per=r.tsper;
       if(per&&per.length>1){
         var tot=0, mx=0;
         per.forEach(function(q){ var t=Number(q&&q.tasks)||0; tot+=t; if(t>mx) mx=t; });
         if(tot>0){ var k=per.length, share=mx/tot;
-          if(k>1) tw1v.push(Math.max(0,Math.min(1,(1-share)/(1-1/k)))*100); }
+          if(k>1){ tw1v.push(Math.max(0,Math.min(1,(1-share)/(1-1/k)))*100); tw1n++; } }
       }
       /* tw2 มีสองสัญญาณตาม `STD-008 v2.0` — เก็บแยกกัน แต่ละตัวเข้าเมื่อมีหลักฐานของตัวเองเท่านั้น */
       var ws=r.tsws, ok=r.tsok;
-      if(ws!=null&&ws>0&&ok!=null) tw2v.push(Math.max(0,Math.min(1,ok/ws))*100);
+      var _tw2Got=false;
+      if(ws!=null&&ws>0&&ok!=null){ tw2v.push(Math.max(0,Math.min(1,ok/ws))*100); _tw2Got=true; }
       /* 🎓 [V.7.99.76 · มติครู 8 ก.ย.] `idleGaps20s` = จำนวน "ครั้งที่ทีมสะดุด" (นิ่ง ≥20 วิ · `:14364`)
          ⛔ ใช้จำนวนดิบไม่ได้ — เล่นนานย่อมสะดุดหลายครั้งกว่าโดยธรรมชาติ
          ✅ ใช้เป็นสัดส่วนเทียบกับจำนวนครั้งที่ลงมือจริง ⇒ ไม่มีค่าตัดที่ต้องเคาะ
          ⛔ แถวรุ่นก่อน V.7.99.60 ไม่มีช่องนี้ ⇒ ข้าม ไม่ใช่ให้ 0 (กฎเดียวกับ tw3) */
       var idl=r.tsidle, pl=r.tspl;
-      if(idl!=null&&pl!=null&&(pl+idl)>0) tw2v.push((1-Math.max(0,Math.min(1,idl/(pl+idl))))*100);
+      if(idl!=null&&pl!=null&&(pl+idl)>0){ tw2v.push((1-Math.max(0,Math.min(1,idl/(pl+idl))))*100); _tw2Got=true; }
+      /* 🔑 รอบนี้มีสัญญาณ tw2 กี่ตัวก็ตาม = ข้อสังเกต 1 ชิ้น (ค่ายังเฉลี่ยจากทุกสัญญาณเหมือนเดิม) */
+      if(_tw2Got) tw2n++;
       /* ⚠️ ต้องมีช่องทั้งคู่ถึงจะคิด — แถว v1 ไม่มีช่องเลย ⇒ ข้าม ไม่ใช่ให้ 0 ([PLAN] ข้อ ②) */
       if(r.tsfx!=null&&r.tsup!=null){
         var opp=r.tsfx+r.tsup;
-        if(opp>0) tw3v.push(Math.max(0,Math.min(1,r.tsfx/opp))*100);
+        if(opp>0){ tw3v.push(Math.max(0,Math.min(1,r.tsfx/opp))*100); tw3n++; }
       }
     });
     var _avg=function(a){ if(!a||!a.length) return null; var t=0; a.forEach(function(x){ t+=x; }); return Math.round(t/a.length*10)/10; };
@@ -3875,7 +3886,7 @@ var CORE6ENG = (function(){
     /* 🔴 [PLAN ข้อ ③ · กับดักที่เขาจับได้ก่อนผมลงมือ] ปริมาณหลักฐานต้องนับ **ข้อสังเกตรายด้านย่อย**
        ไม่ใช่ **จำนวนรอบ** — ไม่งั้นเด็กผ่านเพดาน 4 ชิ้นด้วยรอบที่มีแต่ tw1/tw2 แล้วได้ระดับทั้งด้าน
        ทั้งที่ tw3 ว่างเปล่า = *"ตัวเลขที่ดูครบ แต่ครบเพราะตัวหารไม่ได้เรียกร้องสิ่งที่ขาด"* */
-    var twEvN=tw1v.length+tw2v.length+tw3v.length;
+    var twEvN=tw1n+tw2n+tw3n;
     var twSrc=(twEvN
         ? 'หลักฐานหลัก: พฤติกรรมการทำงานร่วมกันที่เกมบันทึกเอง (teamStat) จากการเล่นกลุ่ม 2 คนขึ้นไป '+twN+' รอบ ⇒ ข้อสังเกตรายด้านย่อย '+twEvN+' ชิ้น'+
           (twEraTxt?(' ('+twEraTxt+')'):'')
@@ -3900,7 +3911,7 @@ var CORE6ENG = (function(){
     out.TW.subCover=_twSub.length;
     /* [V.7.99.74] ด้านย่อยพกคะแนนจริง — ตัวที่ไม่มีหลักฐานส่ง base ว่างเหมือนเดิม
        ⇒ `gpComp` รายงานมันใน `sub_no_evidence` (กลไกของ `.72`) ไม่ใช่ส่ง 0 */
-    var _twBase=[tw1,tw2,tw3], _twNs=[tw1v.length,tw2v.length,tw3v.length];
+    var _twBase=[tw1,tw2,tw3], _twNs=[tw1n,tw2n,tw3n];
     out.TW.dims=TWD.map(function(lbl,i){
       var v=_twBase[i];
       return mkDim(lbl,TWC[i], v==null?[]:[{ pct:v, txt:TW_SRCTXT[i], n:_twNs[i] }]);
@@ -6605,13 +6616,19 @@ function clsRowSel(id, on){
 var BOSS_RETAKE_CAP=21;
 function clsBossScore(bl){
   bl=bl||[];
-  var out={ n:bl.length, fst:0, retake:null, boss:0, noAtt:false };
+  /* 🔴 [V.7.99.80 · [AUDIT] ชี้ขาด 8 ก.ย. · [Code] รายงาน 14:1x] `fst` ตั้งต้นเป็น **null** ไม่ใช่ 0
+     เดิม: มีแถวสอบแต่ไม่มีแถว "ครั้งที่ 1" ⇒ `fst` ค้างที่ 0 ⇒ ส่งขึ้นฐานเป็น "คะแนนครั้งแรก 0"
+     ⇒ ขัดกฎ ก2 (ไม่มีหลักฐาน ≠ ได้ศูนย์) และ **แยกไม่ออกจากเด็กที่สอบครั้งแรกได้ 0 จริง ๆ**
+     ⇒ ของจริงเกิดแล้ว: ป.4/1 5 คน ทำให้ห้องกลายเป็น 13/20 = 65.0% แทน 13/15 = 86.7%
+     🔒 กฎที่ได้จากเรื่องนี้: **ค่าตั้งต้นห้ามอยู่ในพิสัยของค่าจริง**
+     ⚠️ `out.boss` ต้องได้เลขเดิมเป๊ะทุกเคส ⇒ ใช้ `_f` แทน 0 เฉพาะตอนคำนวณคะแนนที่ผู้เรียนได้รับ */
+  var out={ n:bl.length, fst:null, retake:null, boss:0, noAtt:false };
   var num=function(r){ return (r&&r.att!=null&&r.att!==''&&!isNaN(Number(r.att)))?Number(r.att):null; };
   var sc=function(r){ return Number(r&&r.sc)||0; };
   var withAtt=bl.filter(function(r){ return num(r)!=null; });
   if(withAtt.length){
     withAtt.forEach(function(r){ var k=num(r), v=sc(r);
-      if(k===1){ if(v>out.fst) out.fst=v; }
+      if(k===1){ if(out.fst==null||v>out.fst) out.fst=v; }
       else if(k>=2){ if(out.retake==null||v>out.retake) out.retake=v; } });
   }else{
     var byT=bl.slice().sort(function(a,b){ return (a&&a.t||0)-(b&&b.t||0); });
@@ -6621,7 +6638,8 @@ function clsBossScore(bl){
       byT.slice(1).forEach(function(r){ var v=sc(r); if(out.retake==null||v>out.retake) out.retake=v; });
     }
   }
-  out.boss=(out.retake==null)?out.fst:Math.max(out.fst, Math.min(out.retake, BOSS_RETAKE_CAP));
+  var _f=(out.fst==null)?0:out.fst;   /* คะแนนที่ "ได้รับ" ยังเป็นเลขเสมอ — ความไม่รู้อยู่ที่ fst ช่องเดียว */
+  out.boss=(out.retake==null)?_f:Math.max(_f, Math.min(out.retake, BOSS_RETAKE_CAP));
   return out;
 }
 var CLS_LV_CLR={6:'#7c3aed',5:'#16a34a',4:'#d97706',3:'#64748b'};
