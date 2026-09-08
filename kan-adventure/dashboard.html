@@ -218,7 +218,7 @@
 </style>
 <script>/* [ปลูกโดย build_repo.py] เลขรุ่นจาก game.html ที่เดียว
    ถ้าไม่มีบรรทัดนี้ ท่อส่งขึ้นเว็บกลางจะเงียบทั้งเส้นโดยไม่มีข้อความเตือน */
-var GAME_VERSION = 'V.7.99.80-IX2050-2569.102';</script>
+var GAME_VERSION = 'V.7.99.83-IX2050-2569.105';</script>
 </head>
 <body>
 
@@ -298,8 +298,10 @@ var GAME_VERSION = 'V.7.99.80-IX2050-2569.102';</script>
     <!-- [v3 รอบ 67] ตัวสลับหน้า: แยก V.2 (HOTS ทางการ) ↔ V.1 (เกณฑ์เดิม) เป็นคนละหน้าเต็มรูปแบบ -->
     <!-- [รอบใหม่] ใช้ Dashboard V.2 เป็นหลัก — ซ่อนตัวสลับหน้า V.1/V.2 (ไม่แสดง V.1 แล้ว) -->
     <div class="pagenav" style="display:none">
-      <button id="nav-v2" class="on">🎯 Dashboard V.2 <span class="sub">HOTS ทางการ · A20·B30·C25·D25</span></button>
-      <button id="nav-v1" class="v1">📘 Dashboard V.1 <span class="sub">เกณฑ์เดิม · A20·B25·C25·D30</span></button>
+      <!-- [V.7.99.81 · ADR-012] ป้ายเดิมเขียนสูตรถ่วงน้ำหนักที่ยกเลิกแล้ว — แถบนี้ซ่อนอยู่ (display:none)
+           แต่ถ้อยคำยังอยู่ในเอกสาร ถ้าใครเปิดแถบกลับมาจะโฆษณาวิธีที่เลิกใช้ทันที -->
+      <button id="nav-v2" class="on">🎯 Dashboard V.2 <span class="sub">เกณฑ์ปัจจุบัน · 4 ด้านการคิด</span></button>
+      <button id="nav-v1" class="v1">📘 Dashboard V.1 <span class="sub">เกณฑ์เดิม (เลิกใช้แล้ว)</span></button>
     </div>
 
     <!-- ============ [ตามคำขอครู V.7.66 ข้อ 8] หน้าตัวชี้วัด & สมรรถนะหลัก ============ -->
@@ -308,7 +310,7 @@ var GAME_VERSION = 'V.7.99.80-IX2050-2569.102';</script>
         <div style="font-size:22px">📐</div>
         <div style="flex:1;min-width:220px">
           <div style="font-weight:800;color:#6d28d9;font-size:15px">ตัวชี้วัดและสมรรถนะหลักของแต่ละด่าน</div>
-          <div style="font-size:12px;color:#5b21b6">ตัวชี้วัดหลักสูตรแกนกลาง ป.4 + สมรรถนะหลัก 6 ด้าน (CBE) รายด่าน · การคิดขั้นสูงใช้หลักฐาน 4 แหล่ง A20 · B30 · C25 · D25 = 100 → 4 ด้านการคิด (CTC/STM/CRT/PRB) → ระดับ 3-6</div>
+          <div style="font-size:12px;color:#5b21b6">ตัวชี้วัดหลักสูตรแกนกลาง ป.4 + สมรรถนะหลัก 6 ด้าน (CBE) รายด่าน · การคิดขั้นสูงตัดสินจาก 4 ด้านการคิด (CTC/STM/CRT/PRB) → ระดับ 3-6</div>
         </div>
         <button class="btn-ghost" id="ind-back">← กลับ</button>
       </div>
@@ -556,7 +558,7 @@ var GAME_VERSION = 'V.7.99.80-IX2050-2569.102';</script>
       <!-- ═══ ส่วนที่ 2 · สมรรถนะการคิดขั้นสูง (HOTS) ═══ -->
       <div style="margin:0 0 10px;padding:10px 14px;background:linear-gradient(90deg,#ecfdf5,#ffffff);border-left:5px solid #047857;border-radius:10px">
         <b style="font-size:16px;color:#065f46">🧠 ส่วนที่ 2 · สมรรถนะการคิดขั้นสูง (HOTS)</b>
-        <span class="muted" style="font-size:12.5px"> — ประเมินจากหลักฐาน 4 แหล่ง A20 · B30 · C25 · D25 = 100 → ระดับ 3-6 (ไม่ใช่คะแนนเก็บ/สอบ)</span>
+        <span class="muted" style="font-size:12.5px"> — ตัดสินจาก 4 ด้านการคิด (CTC/STM/CRT/PRB) → ระดับ 3-6 (ไม่ใช่คะแนนเก็บ/สอบ)</span>
       </div>
       <div class="grid g-cards" id="v2-hots" style="margin-bottom:12px"></div>
 
@@ -1521,7 +1523,7 @@ function dateStamp(){ var d=new Date(); function p(n){return('0'+n).slice(-2);} 
 /* ============ HELP ============ */
 function fillHelp(){
   $('help-body').innerHTML=
-    '<p>คะแนนสมรรถนะ = 4 แหล่งถ่วงน้ำหนักรวมเป็น 100 คะแนน โดย<b>ไม่นำ เวลา/เหรียญ/ดาว/HP/อันดับ มาคิด</b> (ดาวเป็นกำลังใจในเกมเท่านั้น):</p>'+
+    '<p>ระดับสมรรถนะการคิดขั้นสูง <b>ตัดสินจาก 4 ด้านการคิด (CTC/STM/CRT/PRB)</b> โดย<b>ไม่นำ เวลา/เหรียญ/ดาว/HP/อันดับ มาคิด</b> (ดาวเป็นกำลังใจในเกมเท่านั้น) · หลักฐานเก็บจากสี่แหล่งนี้แล้วจับคู่เข้ากับด้านการคิด ⛔ ไม่ได้ถ่วงน้ำหนักรวมเป็นคะแนนเดียว:</p>'+
     '<table><tr><th>แหล่ง</th><th>น้ำหนัก</th><th>มาจาก</th></tr>'+
     '<tr><td><b>A</b></td><td>20</td><td>ข้อวิเคราะห์ (HOTS) ระหว่างด่าน — คิดจากสัดส่วนที่ตอบถูก (ใช้ตัวช่วยได้ครึ่งคะแนน) เทียบกับข้อที่นักเรียนเจอจริง (ต้องเจอ ≥5 ข้อจึงสรุป)</td></tr>'+
     '<tr><td><b>B</b></td><td>25</td><td>ภารกิจ/มินิเกม (ด่าน 2,4,6 และ mg1/mg2/mg3) — คะแนนภารกิจสเกล 0–10 แปลงตามน้ำหนักแต่ละภารกิจ</td></tr>'+
@@ -4683,7 +4685,12 @@ function clsStatOf(stu){
      เด็กกลุ่มนี้ (แถวยุค Sheets ที่ไม่มีเลขครั้ง) ถูกคิดด้วยวิธีต่างจากเพื่อน
      ⛔ AUDIT สั่งไว้ตรง ๆ ว่า "ห้ามกลืนรวมกับอีก 27 คนเงียบ ๆ" — *"ไม่รู้ครั้งที่" ≠ "รู้ครั้งที่จากเวลา"*
      ธงติดเฉพาะเมื่อใช้ค่าสดจาก events จริง (bossN>0) — ค่าที่ย้ายมาจากฐานไม่ผ่านสูตรนี้ จึงไม่ติดธง */
-  var bossTimeOrder=!!(s&&s.bossN>0&&s.bossNoAtt);
+  /* 🎓 [V.7.99.82 · นิยาม ข] เดิมธงนี้ติดเฉพาะ "คนที่ถูกคิดด้วยลำดับเวลาแทนเลขครั้ง"
+     เพื่อกันไม่ให้กลืนรวมกับเพื่อนเงียบ ๆ ตามเงื่อนไขผูกพันของ AUDIT 1 ก.ย.
+     ตอนนี้ **ทุกคนคิดจากลำดับเวลาเหมือนกันหมด** ⇒ ธงรายคนไม่ได้แยกใครออกจากใครอีกแล้ว
+     ⇒ เงื่อนไขของ AUDIT ยังบังคับใช้ครบ แต่ย้ายไปอยู่ใน**คำอธิบายของทุกช่อง** แทนไอคอนของบางคน
+     (ดู tip ใน clsAchCell) ⛔ ไม่ใช่การถอดความโปร่งใสออก — เป็นการย้ายไปที่ที่ตรงกับของจริง */
+  var bossTimeOrder=!!(s&&s.bossN>0);
   return { collected:col, collectedOldScale:colOld, pbExtra:(s&&s.pbExtra)||null,
     boss:boss, bossTimeOrder:bossTimeOrder, cap:s?s.cap:0, plays:s?s.plays:0, last:s?s.last:0,
     v2:(s&&s.v2)||null, c6:(s&&s.c6)||null, legacy:(s&&s.legacy)||null, shared:!!(s&&s.shared), gmem:(s&&s.gmem)||null,
@@ -4840,7 +4847,10 @@ function gpBuildReport(stu,s){
         ' (ไม่รวมคะแนนสอบด่านบอส ซึ่งส่งแยกในช่อง boss) · จุดตัดระดับเป็นเปอร์เซ็นต์ 80/70/60/50 = '+
         Math.round(CLS_MAX_COLLECTED*0.8)+'/'+Math.round(CLS_MAX_COLLECTED*0.7)+'/'+
         Math.round(CLS_MAX_COLLECTED*0.6)+'/'+Math.round(CLS_MAX_COLLECTED*0.5)+
-        ' · HOTS เกณฑ์ V.2 (A20·B30·C25·D25) · เพดานหลักฐาน 4/8/15 ชิ้น · CM เพดานระดับ 4 · '+
+        /* 🔴 [V.7.99.81 · ADR-012] เดิมข้อความนี้ประกาศต่อเว็บกลางว่า HOTS ตัดสินด้วย A20 B30 C25 D25
+           ซึ่งยกเลิกไปแล้วตั้งแต่ V.7.99.74 ⇒ **เว็บกลางถูกบอกเกณฑ์ที่เลิกใช้แล้วทุกครั้งที่ส่งใบผล**
+           นี่คือจุดที่หนักที่สุดในสี่จุดที่ยาม build จับได้ เพราะมันออกนอกเครื่องไปแล้ว */
+        ' · การคิดขั้นสูงตัดสินจาก 4 ด้านการคิด (CTC/STM/CRT/PRB) เฉลี่ยเฉพาะด้านที่มีหลักฐาน · เพดานหลักฐาน 4/8/15 ชิ้น · CM เพดานระดับ 4 · '+
         'แบบประเมินตนเอง/เพื่อน/ครูสังเกต เป็นหลักฐานประกอบ ไม่รวมในคะแนน'
     },
     p_competencies:comps
@@ -5036,9 +5046,12 @@ function gpStdItems(){
 
   /* ── 2) สมรรถนะหลักที่เกมนี้ "ให้คะแนนจริง" ──
      ส่งเฉพาะด้านที่เกมเก็บหลักฐานเองและสรุประดับได้ (CORE6_STATUS.st ไม่ใช่ 'none')
-     ⇒ ภาค 1 ส่ง 5 ด้าน: SM · HT · CM · CZ · NS (ชุดเดียวกับที่ใบรายงานผลส่งอยู่แล้ว)
-     TW ไม่ส่ง — ด่านทีมระยะ 1 เล่นได้แล้วแต่ยังไม่เก็บหลักฐาน การขึ้นทะเบียนว่า "วัด"
-     ทั้งที่ยังไม่วัด คือการเดาแทนหลักฐาน ผิดกติกาถาวรของโครงการ (ทำระยะ 2-4 เสร็จค่อยเพิ่ม) */
+     ⇒ [V.7.99.81] ภาค 1 ส่ง **6 ด้าน** — TW เข้ามาด้วยแล้ว
+     📌 คอมเมนต์เดิมตรงนี้เขียนว่า "TW ไม่ส่ง เพราะยังไม่เก็บหลักฐาน" ซึ่งจริงตอนเขียน
+        แต่ตายไปตั้งแต่ `V.7.99.59` (เก็บ `teamStat`) และ `V.7.99.74` (ใส่สูตร tw1-3)
+     🔑 กติกาเดิมยังอยู่ครบ — **ห้ามขึ้นทะเบียนว่า "วัด" ทั้งที่ยังไม่วัด**
+        และวันนี้ได้ด้านกลับของมันมาคู่กัน: **ห้ามปฏิเสธการวัดที่ทำอยู่จริง**
+        ทั้งสองข้อคือกติกาเดียวกัน — *ทะเบียนต้องตรงกับของจริง ณ รุ่นนั้น* */
   CORE6.forEach(function(c,i){
     var k=c[0], stt=CORE6_STATUS[k]||{}, R=CORE6_RUBRIC[k]||{};
     if(!stt.st||stt.st==='none') return;
@@ -5059,7 +5072,8 @@ function gpStdItems(){
     items.push({
       code:k, framework:'cbe-core', name:gpStdClip(c[1],400),
       note:gpStdClip(st===null
-        ? ('วัดจากทั้งบทเรียนทุกด่าน ('+IND_ORDER.length+' ด่าน)'+(k==='HT'?' ผ่านหลักฐาน 4 แหล่ง A·B·C·D':' จากร่องรอยการเล่น'))
+        /* [V.7.99.83] ข้อความนี้ไปอยู่ในทะเบียนมาตรฐานที่ส่งขึ้นเว็บกลาง ⇒ ต้องตรงกับ ADR-012 */
+      ? ('วัดจากทั้งบทเรียนทุกด่าน ('+IND_ORDER.length+' ด่าน)'+(k==='HT'?' โดยจับคู่หลักฐานแต่ละชิ้นเข้ากับ 1 ใน 4 ด้านการคิด (CTC/STM/CRT/PRB)':' จากร่องรอยการเล่น'))
         : ('วัดที่ '+st.map(indStageLabel).join(' · ')),400),
       evidence:gpStdClip(evd,600),
       criteria:gpStdClip(crit,600),
@@ -5664,11 +5678,13 @@ function clsAchCell(score, full, bg, extra, cuts, oldScale, timeOrder, extraKeys
   /* [V.7.99.71 · เงื่อนไขผูกพันของ AUDIT] เด็กที่คะแนนสอบคิดจาก "ลำดับเวลา" แทน "เลขครั้ง"
      ต้องเห็นได้บนจอ **โดยไม่ต้องเอาเมาส์ไปชี้** — tooltip อย่างเดียวยังนับว่าเงียบ
      ⛔ ห้ามใช้สีแดง/คำว่า "ผิดพลาด" — เด็กกลุ่มนี้ไม่ได้ทำอะไรผิด ระบบยุคเก่าต่างหากที่ไม่บันทึกเลขครั้ง */
-  if(timeOrder) tip += ' · 🕘 คะแนนสอบของคนนี้คิดจาก "ลำดับเวลา" แทน "เลขครั้ง" เพราะแถวสอบยุคเดิมไม่ได้บันทึกเลขครั้งไว้ — ใช้กติกาเดียวกับเพื่อนทุกประการ (แถวแรกตามเวลา = ครั้งที่ 1)';
+  if(timeOrder) tip += ' · 🕘 คะแนนสอบครั้งแรกของทุกคนคิดจาก "แถวสอบแรกสุดตามเวลา" ตามมติครู 8 ก.ย. 2569 (นิยาม ข) — ⛔ ไม่ใช้ "เลขครั้ง" ที่เกมเก็บไว้ในเครื่องผู้เล่น เพราะเลขนั้นรีเซ็ตได้เมื่อเปลี่ยนเครื่อง/ล้างข้อมูลเว็บ และในโหมดเล่นกลุ่มเป็นเลขของเครื่องที่ส่ง ไม่ใช่ของนักเรียนคนนี้';
   /* [V.7.77 ตามที่ครูสั่ง] ตัดบรรทัด % ออก เหลือคะแนนกับ "สี" ที่บอกระดับ (ตัวเลข % ยังดูได้จาก tooltip) */
   return '<td style="'+base+'" title="'+esc(tip)+'">'+
     '<b style="display:inline-block;min-width:34px;background:'+clr+';color:#fff;border-radius:7px;padding:2px 9px;font-size:12.5px">'+(Math.round(Number(score)*10)/10)+'</b>'+
-    (timeOrder?'<span class="ach-timeorder" style="font-size:12px;margin-left:3px;vertical-align:middle">🕘</span>':'')+'</td>';
+    /* [V.7.99.82] ตัดไอคอน 🕘 รายคนออก — เดิมมันแปลว่า "คนนี้ถูกคิดต่างจากเพื่อน"
+       ตอนนี้ทุกคนคิดวิธีเดียวกัน ⇒ ติดให้ทุกคนก็เป็นเพียงเสียงรบกวน ⛔ คำอธิบายวิธีคิดยังอยู่ครบใน tip */
+    '</td>';
 }
 /* [V.7.71 ข้อ 10 ตามที่ครูขอ] สมรรถนะหลัก 6 ด้านแยกเป็น "คอลัมน์ละด้าน"
    ชื่อด้านย้ายไปอยู่หัวตาราง · ในเซลล์แสดงเป็น "ตัวเลข %" และใช้สีพื้นแทนระดับ 3-6
@@ -5782,6 +5798,61 @@ function clsCore6Detail(t){
         '<span class="muted" style="flex:1;min-width:200px;font-size:10.5px">'+esc(r.src||'')+(r.note?(' · '+esc(r.note)):'')+'</span></div>';
     }).join('')+'</div>';
 }
+/* ════════ 🎓 [V.7.99.82 · มติครู 8 ก.ย. ค่ำ] แผงเรดาร์ 4 ด้านการคิด — แยกออกมาเป็นของตัวเอง ════════
+   ที่มา: เรดาร์นี้เคยอยู่ในแผง "รายละเอียดการประเมินการคิดขั้นสูง" ซึ่งครูสั่งถอดออกใน `V.7.99.81`
+          เพราะแผงนั้นสร้างจาก **สูตรถ่วงน้ำหนัก A20·B30·C25·D25** ที่ `ADR-012` ยกเลิกไปแล้ว
+   ⇒ ครูเคาะว่า "ทำแผงแยกให้ — มีแต่เรดาร์ ไม่มี A·B·C·D" ⇒ ยกเฉพาะส่วนที่ `ADR-012` รับรองออกมา
+   ⛔ ฟังก์ชันนี้ **ไม่แตะ `CV2.W` และไม่อ่าน `v2.A/B/C/D` เลยแม้แต่ช่องเดียว** — อ่าน `v2.comp` อย่างเดียว
+   ⛔ ไม่คำนวณระดับ ไม่ตัดสินอะไร — เป็นภาพรวมของทั้งชั้นเพื่อให้ครูเห็นว่าด้านไหนควรเสริม */
+function clsHtRadarHtml(){
+  var students=(cls.students||[]);
+  if(cls.sumFilter&&cls.sumFilter!=='__all__') students=students.filter(function(x){ return x.classroom_id===cls.sumFilter; });
+  var DIM=[['CTC','การคิดวิเคราะห์เชื่อมโยง','#0ea5e9','จับประเด็น เชื่อมเหตุ-ผล และเลือกหลักฐานมาสนับสนุน'],
+           ['STM','การคิดเชิงระบบ','#22c55e','มองภาพรวม เห็นความสัมพันธ์ของส่วนต่าง ๆ และผลกระทบต่อเนื่อง'],
+           ['CRT','การคิดสร้างสรรค์','#f59e0b','เสนอทางเลือกใหม่ที่ต่างไปจากเดิมและใช้ได้จริง'],
+           ['PRB','การแก้ปัญหา','#ef4444','นิยามปัญหา วางแผน ตัดสินใจ และประเมินผลของทางเลือก']];
+  var cs={CTC:[0,0],STM:[0,0],CRT:[0,0],PRB:[0,0]}, nv=0;
+  students.forEach(function(stu){
+    var t=clsStatOf(stu), v=t&&t.v2;
+    if(!v||v.dataStatus==='NO_DATA') return;
+    var got=false;
+    DIM.forEach(function(d){ var x=v.comp&&v.comp[d[0]];
+      if(x!=null){ cs[d[0]][0]+=x; cs[d[0]][1]++; got=true; } });
+    if(got) nv++;
+  });
+  var av=function(p){ return p[1]?Math.round(p[0]/p[1]*10)/10:null; };
+  var vals=DIM.map(function(d){ return av(cs[d[0]]); });
+  if(!nv) return '<div class="muted" style="font-size:12.5px;padding:10px 2px">ยังไม่มีผู้เรียนที่มีหลักฐานของการคิดขั้นสูงในห้องที่เลือก</div>';
+  var cx=92, cy=90, R=66, N4=4, i, pp;
+  var pt=function(i2,r2){ var ang=-Math.PI/2 + i2*2*Math.PI/N4; return [cx+r2*Math.cos(ang), cy+r2*Math.sin(ang)]; };
+  var rings=''; [0.25,0.5,0.75,1].forEach(function(f){ var pts=[]; for(i=0;i<N4;i++){ pp=pt(i,R*f); pts.push(pp[0].toFixed(1)+','+pp[1].toFixed(1)); } rings+='<polygon points="'+pts.join(' ')+'" fill="none" stroke="#e2e8f0" stroke-width="1"/>'; });
+  var axes=''; for(i=0;i<N4;i++){ pp=pt(i,R); axes+='<line x1="'+cx+'" y1="'+cy+'" x2="'+pp[0].toFixed(1)+'" y2="'+pp[1].toFixed(1)+'" stroke="#e2e8f0"/>'; }
+  var dpts=[], dots=''; for(i=0;i<N4;i++){ var v3=(vals[i]==null)?0:vals[i]; pp=pt(i,R*Math.max(0,Math.min(100,v3))/100); dpts.push(pp[0].toFixed(1)+','+pp[1].toFixed(1)); dots+='<circle cx="'+pp[0].toFixed(1)+'" cy="'+pp[1].toFixed(1)+'" r="3" fill="'+DIM[i][2]+'"/>'; }
+  var labels=''; for(i=0;i<N4;i++){ pp=pt(i,R+13); labels+='<text x="'+pp[0].toFixed(1)+'" y="'+pp[1].toFixed(1)+'" font-size="10" font-weight="700" fill="#475569" text-anchor="middle" dominant-baseline="middle">'+DIM[i][0]+'</text>'; }
+  var bar=function(v,clr){ var p=v==null?0:Math.max(0,Math.min(100,v));
+    return '<span style="display:inline-block;width:110px;background:#eef2f7;border-radius:999px;height:9px;position:relative;overflow:hidden;vertical-align:middle"><span style="position:absolute;left:0;top:0;bottom:0;width:'+p+'%;background:'+clr+'"></span></span>'; };
+  return '<div class="muted" style="font-size:12px;margin:2px 0 10px">ค่าเฉลี่ยของทั้งชั้น เต็มด้านละ 100 · สรุปจากผู้เรียน '+nv+' คนที่มีหลักฐาน · <b>ด้านที่เว้าเข้าคือด้านที่ควรเสริม</b><br>⛔ เป็นภาพรวมเพื่อการสอน ไม่ได้ใช้ตัดสินระดับของผู้เรียนคนใด</div>'+
+    '<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:10px 13px">'+
+      '<svg width="184" height="180">'+rings+axes+'<polygon points="'+dpts.join(' ')+'" fill="rgba(4,120,87,.15)" stroke="#047857" stroke-width="2"/>'+dots+labels+'</svg>'+
+      '<div style="display:flex;flex-direction:column;gap:7px;flex:1;min-width:210px">'+
+        DIM.map(function(d,i2){ return '<div style="font-size:12px"><div style="display:flex;align-items:center;gap:7px">'+
+          '<span style="width:9px;height:9px;border-radius:50%;background:'+d[2]+';display:inline-block;flex:none"></span>'+
+          '<span style="flex:1"><b style="color:'+d[2]+'">'+d[0]+'</b> '+esc(d[1])+'</span>'+
+          bar(vals[i2],d[2])+' <b style="color:'+d[2]+';min-width:34px;text-align:right;display:inline-block">'+(vals[i2]==null?'–':vals[i2])+'</b></div>'+
+          '<div class="muted" style="font-size:10.5px;margin-left:16px">'+esc(d[3])+' · มีหลักฐาน '+cs[d[0]][1]+' คน</div></div>'; }).join('')+
+      '</div></div>';
+}
+function clsOpenHtRadar(){
+  var old=document.getElementById('cls-htradar-modal'); if(old) old.remove();
+  var wrap=document.createElement('div');
+  wrap.id='cls-htradar-modal';
+  wrap.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:999;display:flex;align-items:flex-start;justify-content:center;padding:20px 12px;overflow:auto';
+  wrap.innerHTML='<div style="background:#fff;border-radius:14px;padding:16px 20px 20px;width:min(720px,96vw);box-shadow:0 20px 50px rgba(0,0,0,.3)">'+
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><b style="font-size:16px;flex:1">🧠 การคิดขั้นสูง — ภาพรวม 4 ด้านการคิดของทั้งชั้น</b>'+
+      '<button class="btn-ghost" style="padding:5px 14px" onclick="document.getElementById(\'cls-htradar-modal\').remove()">ปิด</button></div>'+
+    clsHtRadarHtml()+'</div>';
+  document.body.appendChild(wrap);
+}
 /* [ตามคำขอครู V.7.69 ข้อ 5] ตารางจำนวนนักเรียนรายระดับ (3·4·5·6) ของสมรรถนะหลักทั้ง 6 ด้าน
    ด้านที่ยังไม่มีหลักฐานพอ → นับไว้ในช่อง "ข้อมูลยังไม่พอ" · ด้านที่ระบบไม่ประเมิน → บอกตรง ๆ */
 function clsCore6MatrixHtml(students, htAvg, htN){
@@ -5810,7 +5881,10 @@ function clsCore6MatrixHtml(students, htAvg, htN){
         ((a.none)?(' <span class="muted">(มีข้อมูลการมีส่วนร่วม '+a.none+' คน)</span>'):'')+'</td></tr>';
     }
     return '<tr><td style="font-weight:700;color:'+c[2]+'">'+esc(c[1])+
-        (k==='HT'?' <button class="btn-ghost" style="padding:0 7px;font-size:11px" onclick="clsOpenHotsDetail()">รายละเอียด</button>':'')+'</td>'+
+        /* 🎓 [V.7.99.81] ถอดปุ่ม "รายละเอียด" ออก — มันเปิดแผง A·B·C·D เก่าที่ ADR-012 ยกเลิกตั้งแต่ .74
+           🎓 [V.7.99.82 · มติครู] แต่ **เรดาร์ 4 ด้านการคิดที่อยู่ในแผงนั้นเป็นของที่ ADR-012 รับรอง**
+              ⇒ ครูสั่งให้ทำแผงแยก "มีแต่เรดาร์ ไม่มี A·B·C·D" ⇒ ปุ่มใหม่ชี้ไปที่แผงสะอาดแทน */
+        (k==='HT'?' <button class="btn-ghost" style="padding:0 7px;font-size:11px" onclick="clsOpenHtRadar()">🧠 4 ด้านการคิด</button>':'')+'</td>'+
       LV.map(function(L){ var v=a[L];
         return '<td style="text-align:center;font-weight:800;color:'+(v?CLS_LV_CLR[L]:'#cbd5e1')+'">'+v+'</td>'; }).join('')+
       '<td style="text-align:center;color:#94a3b8">'+a.partial+'</td></tr>';
@@ -5827,19 +5901,26 @@ function clsCore6Html(){
   var badge=function(st){
     if(st==='score')   return '<span style="background:#dcfce7;color:#166534;border-radius:999px;padding:1px 8px;font-size:10.5px;font-weight:800">ประเมินเป็นคะแนน</span>';
     if(st==='observe') return '<span style="background:#fef3c7;color:#92400e;border-radius:999px;padding:1px 8px;font-size:10.5px;font-weight:700">มีในบทเรียน · ยังไม่ให้คะแนน</span>';
-    return '<span style="background:#f1f5f9;color:#64748b;border-radius:999px;padding:1px 8px;font-size:10.5px;font-weight:700">ไม่มีการประเมิน</span>';
+    /* 🔴 [V.7.99.81] เทสต์ ก8 ของชุดนี้จับได้เอง: `CM` มีสถานะ `'capped'` (ประเมินจริง แต่ติดเพดานระดับ 4)
+       แต่ไม่มีสาขารองรับ ⇒ ตกลงมาที่ทางออกสุดท้าย ⇒ **ถูกติดป้ายว่า "ไม่มีการประเมิน" มาตลอด**
+       โรคเดียวกับ TW เป๊ะ แค่ซ่อนอยู่ใน default ของฟังก์ชัน ไม่ใช่ในตารางประกาศ
+       🔒 บทเรียน: ทางออกสุดท้ายของฟังก์ชันที่แปลสถานะ ห้ามเป็นข้อความที่ *ยืนยันอะไรบางอย่าง*
+          ควรเป็นข้อความที่บอกว่า "ไม่รู้จักสถานะนี้" เพื่อให้เห็นทันทีเมื่อมีสถานะใหม่ */
+    if(st==='capped')  return '<span style="background:#e0f2fe;color:#075985;border-radius:999px;padding:1px 8px;font-size:10.5px;font-weight:800">ประเมินเป็นคะแนน · มีเพดานระดับ</span>';
+    if(st==='none')    return '<span style="background:#f1f5f9;color:#64748b;border-radius:999px;padding:1px 8px;font-size:10.5px;font-weight:700">ไม่มีการประเมิน</span>';
+    return '<span style="background:#fef2f2;color:#991b1b;border-radius:999px;padding:1px 8px;font-size:10.5px;font-weight:700">สถานะที่จอนี้ยังไม่รู้จัก ('+esc(String(st))+')</span>';
   };
   return '<div style="margin-top:9px;border:1px solid var(--line);border-radius:10px;overflow:hidden">'+
-    '<div style="background:#f8fafc;padding:5px 11px;font-size:11.5px;font-weight:800;color:#334155">🧩 สมรรถนะหลัก 6 ด้าน (หลักสูตรฐานสมรรถนะ) — บทเรียนชุดนี้ประเมิน "การคิดขั้นสูง" เป็นหลัก</div>'+
+    '<div style="background:#f8fafc;padding:5px 11px;font-size:11.5px;font-weight:800;color:#334155">🧩 สมรรถนะหลัก 6 ด้าน (หลักสูตรฐานสมรรถนะ) — บทเรียนชุดนี้ให้คะแนนครบทั้ง 6 ด้าน จากหลักฐานที่เกมบันทึกเอง</div>'+
     CORE6.map(function(c){
       var st=(CORE6_STATUS[c[0]]||{}).st||'none', note=(CORE6_STATUS[c[0]]||{}).note||'';
-      var clickable=(c[0]==='HT');
-      /* [แก้] เขียน style เป็นแอตทริบิวต์เดียว — เดิมมี style ซ้ำ 2 อัน เบราว์เซอร์ใช้อันแรก ทำให้เลย์เอาต์ flex ไม่ทำงาน */
-      return '<div class="c6row"'+(clickable?' onclick="clsOpenHotsDetail()" title="กดเพื่อดูรายละเอียดการประเมินการคิดขั้นสูง"':'')+
-        ' style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;padding:7px 11px;border-top:1px solid var(--line)'+(clickable?';cursor:pointer;background:#faf5ff':'')+'">'+
+      /* [แก้] เขียน style เป็นแอตทริบิวต์เดียว — เดิมมี style ซ้ำ 2 อัน เบราว์เซอร์ใช้อันแรก ทำให้เลย์เอาต์ flex ไม่ทำงาน
+         [V.7.99.81 · ครูสั่ง] ถอนทางกดไปแผง A·B·C·D ออกทั้งก้อน — ตั้ง clickable=false เฉย ๆ ไม่พอ
+         เพราะสตริง onclick ยังอยู่ในเอกสาร แล้ววันหลังใครกลับเงื่อนไขเป็น true ก็ได้แผงเก่าคืนทันที */
+      return '<div class="c6row"'+
+        ' style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;padding:7px 11px;border-top:1px solid var(--line)">'+
         '<span style="width:9px;height:9px;border-radius:50%;background:'+c[2]+';margin-top:5px;flex:none"></span>'+
         '<div style="flex:1;min-width:150px"><b style="font-size:12.5px;color:'+c[2]+'">'+esc(c[1])+'</b>'+
-          (clickable?' <span style="font-size:11px;color:#6d28d9;font-weight:700">▸ กดดูรายละเอียดการประเมิน</span>':'')+
           '<div class="muted" style="font-size:11px;line-height:1.5">'+esc(note)+'</div></div>'+
         badge(st)+'</div>';
     }).join('')+'</div>';
@@ -5855,7 +5936,7 @@ function clsCore6Rubric(){
     'จุดตัดใช้ชุดเดียวกันทุกด้านเพื่อให้อ่านเทียบกันได้: <b>≥80 = ระดับ 6 · 65-79 = 5 · 50-64 = 4 · ต่ำกว่า 50 = 3</b> · '+
     'ด้านที่หลักฐานไม่ถึงเกณฑ์ขั้นต่ำจะขึ้นว่า <b>"ข้อมูลยังไม่พอ"</b> แทนการเดาระดับ</div>';
   return head + CORE6.map(function(c){
-    var k=c[0], R=CORE6_RUBRIC[k]||{}, clickable=(k==='HT');
+    var k=c[0], R=CORE6_RUBRIC[k]||{};   /* [V.7.99.81] ตัด clickable ทิ้ง — ไม่มีแผง A·B·C·D ให้เปิดอีกแล้ว */
     var lvTbl='<table style="width:100%;border-collapse:collapse;font-size:11.5px;margin-top:7px;table-layout:fixed">'+
       '<colgroup><col style="width:24%"><col></colgroup><tbody>'+
       [3,4,5,6].map(function(L){
@@ -5866,7 +5947,6 @@ function clsCore6Rubric(){
     return '<div style="border:1px solid var(--line);border-left:5px solid '+c[2]+';border-radius:10px;padding:9px 12px;margin-bottom:9px;background:#fff">'+
       '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
         '<b style="font-size:13.5px;color:'+c[2]+';flex:1;min-width:170px">'+esc(c[1])+'</b>'+
-        (clickable?'<button class="btn-ghost" style="padding:2px 10px;font-size:11.5px" onclick="clsOpenHotsDetail()">▸ ดูรายละเอียด 4 ด้านย่อย</button>':'')+
       '</div>'+
       line('หลักฐานที่ใช้ —', R.ev) +
       line('ผู้ประเมิน —', R.who) +
@@ -5882,19 +5962,9 @@ function clsCore6Rubric(){
 /* [ข้อ 9] กดที่ "การคิดขั้นสูง" → เปิดรายละเอียด 4 ด้านย่อย + วิธีประเมินโดยละเอียด */
 /* [V.7.72 ข้อ 5 ตามที่ครูขอ] เนื้อหา "เกณฑ์การประเมินการคิดขั้นสูง" แยกออกมาเป็นฟังก์ชันเดียว
    เพื่อให้แสดงได้ทั้งในหน้า 📐 ตัวชี้วัด/สมรรถนะ (ที่ครูขอให้ย้ายไป) และเรียกซ้ำจากที่อื่นได้โดยไม่ต้องคัดลอกโค้ด */
-/* หน้าต่างเกณฑ์การประเมินการคิดขั้นสูง — ยังใช้จากลิงก์ "รายละเอียด" ในตารางต่าง ๆ
-   (เนื้อหาชุดเดียวกับที่ย้ายไปอยู่ในหน้า 📐 ตัวชี้วัด/สมรรถนะ ตามข้อ 5) */
-function clsOpenHotsDetail(){
-  var old=document.getElementById('cls-hots-modal'); if(old) old.remove();
-  var wrap=document.createElement('div');
-  wrap.id='cls-hots-modal';
-  wrap.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:999;display:flex;align-items:flex-start;justify-content:center;padding:20px 12px;overflow:auto';
-  wrap.innerHTML='<div style="background:#fff;border-radius:14px;padding:16px 20px 20px;width:min(720px,96vw);box-shadow:0 20px 50px rgba(0,0,0,.3)">'+
-    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><b style="font-size:16px;flex:1">🧠 สมรรถนะการคิดขั้นสูง — รายละเอียดการประเมิน</b>'+
-      '<button class="btn-ghost" style="padding:5px 14px" onclick="document.getElementById(\'cls-hots-modal\').remove()">ปิด</button></div>'+
-    clsHotsCriteriaHtml()+'</div>';
-  document.body.appendChild(wrap);
-}
+/* [V.7.99.83 · ครูสั่ง] ลบ `clsOpenHotsDetail()` ทิ้ง — มันเปิดแผงเอกสารสูตร A·B·C·D ที่ ADR-012 ยกเลิก
+   `.81` ถอดปุ่มออกแล้ว แต่ตัวฟังก์ชันยังอยู่ และ **หน้าตัวชี้วัดยังฝังแผงเดียวกันไว้อีกทาง** (พลาดของผมเอง)
+   ⇒ ลบทั้งสองตัว เพื่อให้ไม่มีทางกลับมาได้อีกไม่ว่าจากทางไหน */
 
 /* [V.7.73 ตามที่ครูขอ] "ผลการประเมินสมรรถนะ (นักเรียนประเมินตนเอง)"
    นำคำตอบจากแบบประเมินตนเองในเกม มาสรุปรายด้านเป็นรายบุคคล
@@ -6181,7 +6251,7 @@ function clsCmpRender(){
     '<button class="btn-ghost" style="padding:3px 12px;font-size:12px;'+(mode==='comp'?'background:#eef2ff;color:#3730a3;font-weight:800':'')+'" onclick="clsCmpMode(\'comp\')">6 สมรรถนะ</button>'+
     '<button class="btn-ghost" style="padding:3px 12px;font-size:12px;'+(mode==='dim'?'background:#eef2ff;color:#3730a3;font-weight:800':'')+'" onclick="clsCmpMode(\'dim\')">19 ด้านย่อย</button>'+
     '<button class="btn-ghost" style="padding:3px 12px;font-size:12px;color:#6b21a8" onclick="clsOpenSelfAssess()">🧠 สรุปประเมินตนเองฉบับเต็ม</button>'+
-    '<span class="muted" style="font-size:11.5px;flex:1;min-width:200px">กดที่ช่องไหนก็ได้ เพื่อดูหลักฐาน 4 แหล่งและตัดสินระดับของนักเรียนคนนั้น</span></div>'+
+    '<span class="muted" style="font-size:11.5px;flex:1;min-width:200px">กดที่ช่องไหนก็ได้ เพื่อดูหลักฐานรายด้านและตัดสินระดับของนักเรียนคนนั้น</span></div>'+
     '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px">'+legend+'</div>';
 
   /* ---------- ตาราง: แถว = นักเรียนทุกคน · คอลัมน์ = สมรรถนะ ---------- */
@@ -6343,77 +6413,11 @@ function clsCmpWriteFinal(sid,comps,notes,stEl,okMsg){
   });
 }
 
-function clsHotsCriteriaHtml(){
-
-  var old=document.getElementById('cls-hots-modal'); if(old) old.remove();
-  var students=(cls.students||[]);
-  if(cls.sumFilter&&cls.sumFilter!=='__all__') students=students.filter(function(x){ return x.classroom_id===cls.sumFilter; });
-  var cs={CTC:[0,0],STM:[0,0],CRT:[0,0],PRB:[0,0]}, srcS={A:[0,0],B:[0,0],C:[0,0],D:[0,0]}, lvC={3:0,4:0,5:0,6:0}, nv=0, tot=0;
-  students.forEach(function(stu){ var t=clsStatOf(stu); var v=t.v2;
-    if(!v||v.dataStatus==='NO_DATA') return;
-    nv++; tot+=v.total; lvC[v.level]=(lvC[v.level]||0)+1;
-    ['A','B','C','D'].forEach(function(k){ if(v[k]!=null){ srcS[k][0]+=v[k]; srcS[k][1]++; } });
-    ['CTC','STM','CRT','PRB'].forEach(function(k){ var x=v.comp&&v.comp[k]; if(x!=null){ cs[k][0]+=x; cs[k][1]++; } });
-  });
-  var av=function(p){ return p[1]?Math.round(p[0]/p[1]*10)/10:null; };
-  var W=CV2.W;
-  var SRC=[['A','ข้อคิดวิเคราะห์ระหว่างด่าน (ครั้งแรกที่พบแต่ละข้อ · มีรอบ 2-3 ใช้ 40:60)',W.A],
-           ['B','ภารกิจและมินิเกม 7 กิจกรรม (คะแนนภารกิจสเกล 0-10 ถ่วงน้ำหนัก)',W.B],
-           ['C','ข้อคิดวิเคราะห์ในด่านบอส 20 ข้อ (สอบครั้งแรก)',W.C],
-           ['D','ด่านกาญจนบุรี 2050 · 6 เกณฑ์ผลงาน (ครั้งที่ 1-2 เลือกสูงสุด)',W.D]];
-  var DIM=[['CTC','การคิดวิเคราะห์เชื่อมโยง','จับประเด็น เชื่อมเหตุ-ผล และเลือกหลักฐานมาสนับสนุน'],
-           ['STM','การคิดเชิงระบบ','มองภาพรวม เห็นความสัมพันธ์ของส่วนต่าง ๆ และผลกระทบต่อเนื่อง'],
-           ['CRT','การคิดสร้างสรรค์','เสนอทางเลือกใหม่ที่ต่างไปจากเดิมและใช้ได้จริง'],
-           ['PRB','การแก้ปัญหา','นิยามปัญหา วางแผน ตัดสินใจ และประเมินผลของทางเลือก']];
-  var bar=function(v,mx,clr){ var p=v==null?0:Math.max(0,Math.min(100,v/mx*100));
-    return '<span style="display:inline-block;width:120px;background:#eef2f7;border-radius:999px;height:9px;position:relative;overflow:hidden;vertical-align:middle"><span style="position:absolute;left:0;top:0;bottom:0;width:'+p+'%;background:'+clr+'"></span></span>'; };
-  /* [V.7.71 ข้อ 8] เรดาร์ 4 ด้านการคิด ย้ายจากหน้าสรุป (ที่ครูขอให้ถอดออก) มาไว้ในหน้าต่างนี้แทน
-     ข้อมูลจึงไม่หายไปไหน — ครูกดปุ่ม "🧠 เกณฑ์ประเมินการคิดขั้นสูง" แล้วเห็นครบเหมือนเดิม */
-  var radarHtml='';
-  if(nv>0){
-    var RC=[['CTC','#0ea5e9'],['STM','#22c55e'],['CRT','#f59e0b'],['PRB','#ef4444']];
-    var vals=RC.map(function(c){ return av(cs[c[0]]); });
-    var cx=92, cy=90, R=66, N4=4, i, pp;
-    var pt=function(i2,r2){ var ang=-Math.PI/2 + i2*2*Math.PI/N4; return [cx+r2*Math.cos(ang), cy+r2*Math.sin(ang)]; };
-    var rings=''; [0.25,0.5,0.75,1].forEach(function(f){ var pts=[]; for(i=0;i<N4;i++){ pp=pt(i,R*f); pts.push(pp[0].toFixed(1)+','+pp[1].toFixed(1)); } rings+='<polygon points="'+pts.join(' ')+'" fill="none" stroke="#e2e8f0" stroke-width="1"/>'; });
-    var axes=''; for(i=0;i<N4;i++){ pp=pt(i,R); axes+='<line x1="'+cx+'" y1="'+cy+'" x2="'+pp[0].toFixed(1)+'" y2="'+pp[1].toFixed(1)+'" stroke="#e2e8f0"/>'; }
-    var dpts=[], dots=''; for(i=0;i<N4;i++){ var v3=(vals[i]==null)?0:vals[i]; pp=pt(i,R*Math.max(0,Math.min(100,v3))/100); dpts.push(pp[0].toFixed(1)+','+pp[1].toFixed(1)); dots+='<circle cx="'+pp[0].toFixed(1)+'" cy="'+pp[1].toFixed(1)+'" r="3" fill="'+RC[i][1]+'"/>'; }
-    var labels=''; for(i=0;i<N4;i++){ pp=pt(i,R+13); labels+='<text x="'+pp[0].toFixed(1)+'" y="'+pp[1].toFixed(1)+'" font-size="10" font-weight="700" fill="#475569" text-anchor="middle" dominant-baseline="middle">'+RC[i][0]+'</text>'; }
-    radarHtml='<div style="font-weight:800;font-size:13px;margin:14px 0 4px">3) ภาพรวม 4 ด้านการคิดของทั้งชั้น</div>'+
-      '<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:10px 13px">'+
-      '<svg width="184" height="180">'+rings+axes+'<polygon points="'+dpts.join(' ')+'" fill="rgba(4,120,87,.15)" stroke="#047857" stroke-width="2"/>'+dots+labels+'</svg>'+
-      '<div style="display:flex;flex-direction:column;gap:5px;flex:1;min-width:180px">'+
-        RC.map(function(c,i2){ return '<div style="display:flex;align-items:center;gap:7px;font-size:12px"><span style="width:9px;height:9px;border-radius:50%;background:'+c[1]+';display:inline-block"></span>'+
-          '<span style="flex:1">'+esc(DIM[i2][1])+'</span><b style="color:'+c[1]+'">'+(vals[i2]==null?'–':vals[i2])+'</b></div>'; }).join('')+
-        '<div class="muted" style="font-size:11px;margin-top:2px">ค่าเฉลี่ยของทั้งชั้น เต็มด้านละ 100 · ด้านที่เว้าเข้าคือด้านที่ควรเสริม</div>'+
-      '</div></div>';
-  }
-  return '<div class="muted" style="font-size:12px;margin:6px 0 10px">คิดจากหลักฐานจริงในเกม 4 แหล่ง รวม 100 คะแนน → แปลงเป็น 4 ด้านการคิด → สรุปเป็นระดับ 3-6'+
-      (nv?' · สรุปจากผู้เรียน '+nv+' คน (เฉลี่ยรวม '+(Math.round(tot/nv*10)/10)+'/100)':' · ยังไม่มีข้อมูลผู้เรียนที่ประเมินได้')+'</div>'+
-    '<div style="font-weight:800;font-size:13px;margin:10px 0 4px">1) องค์ประกอบย่อย 4 ด้านของการคิดขั้นสูง</div>'+
-    '<div style="overflow-x:auto"><table class="cls-tbl"><thead><tr><th>ด้าน</th><th>ความหมาย</th><th style="text-align:center">ค่าเฉลี่ยห้อง (%)</th></tr></thead><tbody>'+
-    DIM.map(function(d){ var a=av(cs[d[0]]);
-      return '<tr><td style="white-space:nowrap"><b style="color:'+IND_COMP_CLR[d[0]]+'">'+d[0]+'</b> '+esc(d[1])+'</td>'+
-        '<td style="font-size:11.5px">'+esc(d[2])+'</td>'+
-        '<td style="text-align:center;white-space:nowrap">'+bar(a,100,IND_COMP_CLR[d[0]])+' <b>'+(a==null?'–':a)+'</b></td></tr>'; }).join('')+
-    '</tbody></table></div>'+
-    radarHtml+
-    '<div style="font-weight:800;font-size:13px;margin:14px 0 4px">2) หลักฐาน 4 แหล่งที่ใช้ให้คะแนน</div>'+
-    '<div style="overflow-x:auto"><table class="cls-tbl"><thead><tr><th>แหล่ง</th><th>เก็บจากอะไร</th><th style="text-align:center">เต็ม</th><th style="text-align:center">ค่าเฉลี่ยห้อง</th></tr></thead><tbody>'+
-    SRC.map(function(x){ var a=av(srcS[x[0]]);
-      return '<tr><td style="text-align:center;font-weight:800">'+x[0]+'</td><td style="font-size:11.5px">'+esc(x[1])+'</td>'+
-        '<td style="text-align:center">'+x[2]+'</td><td style="text-align:center;white-space:nowrap">'+bar(a,x[2],'#047857')+' <b>'+(a==null?'–':a)+'</b></td></tr>'; }).join('')+
-    '</tbody></table></div>'+
-    '<div style="font-weight:800;font-size:13px;margin:14px 0 4px">3) การสรุปเป็นระดับสมรรถนะ</div>'+
-    '<div style="background:#f8fafc;border-radius:10px;padding:9px 12px;font-size:12px;line-height:1.7">'+
-      'รวม ≥ 80 = <b style="color:'+CLS_LV_CLR[6]+'">ระดับ 6 เหนือความคาดหวัง</b> · 65-79 = <b style="color:'+CLS_LV_CLR[5]+'">ระดับ 5 สามารถ</b> · 50-64 = <b style="color:'+CLS_LV_CLR[4]+'">ระดับ 4 กำลังพัฒนา</b> · ต่ำกว่า 50 = <b style="color:'+CLS_LV_CLR[3]+'">ระดับ 3 เริ่มต้น</b>'+
-      '<div style="margin-top:5px">เงื่อนไขเพิ่มของระดับ 6: ต้องมีหลักฐานครบทั้ง 4 แหล่ง และทุกด้านการคิด (CTC/STM/CRT/PRB) ต้อง ≥ 65</div>'+
-      '<div style="margin-top:5px">ใช้ <b>ครั้งแรกที่นักเรียนพบแต่ละข้อ/ภารกิจ</b> เป็นผลหลักของงานวิจัย (Best Attempt เก็บไว้ดูพัฒนาการ ไม่ใช้ตัดสินระดับ)</div>'+
-    '</div>'+
-    '<div style="font-weight:800;font-size:13px;margin:14px 0 4px">4) จำนวนผู้เรียนตามระดับ</div>'+
-    clsLevelChart(lvC,nv)+
-    '<div class="muted" style="font-size:11.5px;margin-top:10px">หมายเหตุ: เกณฑ์ชุดนี้เป็นฉบับใช้ในการวิจัย — ปรับสัดส่วนหรือแผนผังข้อ→ด้านการคิดได้ที่ค่าคงที่ในระบบ</div>';
-}
+/* [V.7.99.83 · ครูสั่ง] ลบ `clsHotsCriteriaHtml()` ทิ้งทั้งฟังก์ชัน (~70 บรรทัด)
+   มันคือ **เอกสารของสูตรถ่วงน้ำหนัก A20·B30·C25·D25 ทั้งใบ**: ตารางน้ำหนัก 4 แหล่ง ·
+   เงื่อนไข "ระดับ 6 ต้องมีหลักฐานครบทั้ง 4 แหล่ง" · และประโยค "รวม 100 คะแนน"
+   ⛔ ทั้งหมดถูกยกเลิกโดย `ADR-012` (มติครู 29 ส.ค.) ตั้งแต่ `V.7.99.74`
+   ✅ ส่วนที่ยังใช้ได้ (เรดาร์ 4 ด้านการคิด) ถูกยกไปเป็น `clsHtRadarHtml()` แล้วใน `V.7.99.82` */
 
 function clsSummaryHtml(){
   /* [ตามคำขอครู] ตัวกรองสรุปรวม: ทุกห้อง หรือเจาะรายห้อง */
@@ -6622,22 +6626,50 @@ function clsBossScore(bl){
      ⇒ ของจริงเกิดแล้ว: ป.4/1 5 คน ทำให้ห้องกลายเป็น 13/20 = 65.0% แทน 13/15 = 86.7%
      🔒 กฎที่ได้จากเรื่องนี้: **ค่าตั้งต้นห้ามอยู่ในพิสัยของค่าจริง**
      ⚠️ `out.boss` ต้องได้เลขเดิมเป๊ะทุกเคส ⇒ ใช้ `_f` แทน 0 เฉพาะตอนคำนวณคะแนนที่ผู้เรียนได้รับ */
+  /* ═══════ 🎓 [V.7.99.82 · มติครู 8 ก.ย. ค่ำ — เคาะ **นิยาม `ข`**] ═══════
+     **คะแนนสอบครั้งแรก = แถวบอส "แถวแรกสุดตามเวลา" ของนักเรียนคนนั้น** ⛔ เลิกใช้ `attemptNo` ทั้งหมด
+
+     🔴 ทำไมเลิกใช้ `attemptNo` — ผมตรวจจากซอร์สเองแล้วรายงานไปเมื่อ 21:5x:
+        `attemptNo` เก็บใน `localStorage` ของ**เบราว์เซอร์** ผูกกับชื่อผู้ใช้ล่าสุดบนเครื่องนั้น (`:21621`)
+        · **รีเซ็ตเป็น 1 ได้สี่ทาง** (คนละเครื่อง · ล้างข้อมูลเว็บ = ทุกวัน · `register()` ลบเซฟ · คีย์ชื่อผู้ใช้เปลี่ยน)
+        · **ค้างได้** เมื่อ `writeSaveData` เขียนไม่ลงแล้วกลืน error (`:21639`)
+        · **โหมดกลุ่มใช้เลขของเครื่องที่ส่ง** ⇒ ไม่ใช่ของนักเรียนคนนั้นเลย
+     ⇒ 🔒 **ตัวระบุที่ผูกกับเครื่อง ห้ามใช้แทนตัวระบุที่ผูกกับคน** (ข้อเสนอ [AUDIT] 8 ก.ย. 18:0x)
+
+     🔴 และของเดิมไม่ได้แปลว่า "ครั้งแรก" จริง: `if(k===1){ if(v>out.fst) out.fst=v; }`
+        = **ค่าสูงสุดของทุกแถวที่ติดป้ายเลข 1** ซึ่ง [Code] วัดได้ว่า **14 จาก 15 คนมีแถวเลข 1 หลายแถว**
+        ⇒ เลข `86.7% / 22.73` ที่เคยรับรอง คือค่าสูงสุดของหลายแถว ไม่ใช่คะแนนครั้งแรก (ถอนหมดแล้ว)
+
+     ✅ **ผลพลอยได้ที่สำคัญ: บั๊กแฝงหายไปเอง** — เดิม `withAtt` กรองแถวที่ไม่มีเลขครั้งทิ้ง
+        **ถ้ามีแถวใดแถวหนึ่งมีเลขครั้ง แถวไร้เลขครั้งจะถูกทิ้งทั้งหมด** ⇒ การสอบจริงยุค 15-20 ก.ค. (133 แถว)
+        มองไม่เห็น ⇒ 4 คนที่สอบครั้งแรกเมื่อ ก.ค. (11·11·20·20) ถูกข้าม · **ตอนนี้ทุกแถวถูกนับตามเวลา**
+
+     ⚠️ **ผลที่ต้องรู้ล่วงหน้า — คะแนนที่ผู้เรียน *ได้รับ* ของบางคนจะเปลี่ยน**
+        กติกาครูทาง ข (`V.7.99.69`) ไม่เปลี่ยน: *"คะแนนครั้งแรกไม่มีวันลด · สอบซ่อมนับได้สูงสุด 21"*
+        แต่เมื่อ "ครั้งแรก" เปลี่ยนนิยาม เด็กที่เคยได้คะแนนสูงจาก**แถวซ้ำที่ติดป้ายเลข 1**
+        จะถูกกดลงมาที่เพดาน 21 ตามกติกา 🔑 **นี่คือกติกาเพดานของครูทำงานถูกต้องเป็นครั้งแรก** —
+        ของเดิมปล่อยคะแนนจากการสอบซ้ำผ่านเพดานไปได้ เพราะมันถูกติดป้ายผิดว่าเป็นครั้งที่ 1
+     ⛔ ไม่แตะเพดาน `BOSS_RETAKE_CAP` · ไม่แตะสูตรอื่น · ไม่แตะ `logAnswer`/`logEvidence` */
   var out={ n:bl.length, fst:null, retake:null, boss:0, noAtt:false };
   var num=function(r){ return (r&&r.att!=null&&r.att!==''&&!isNaN(Number(r.att)))?Number(r.att):null; };
   var sc=function(r){ return Number(r&&r.sc)||0; };
-  var withAtt=bl.filter(function(r){ return num(r)!=null; });
-  if(withAtt.length){
-    withAtt.forEach(function(r){ var k=num(r), v=sc(r);
-      if(k===1){ if(out.fst==null||v>out.fst) out.fst=v; }
-      else if(k>=2){ if(out.retake==null||v>out.retake) out.retake=v; } });
-  }else{
-    var byT=bl.slice().sort(function(a,b){ return (a&&a.t||0)-(b&&b.t||0); });
-    out.noAtt=byT.length>1;
-    if(byT.length){
-      out.fst=sc(byT[0]);
-      byT.slice(1).forEach(function(r){ var v=sc(r); if(out.retake==null||v>out.retake) out.retake=v; });
-    }
+  /* เรียงตามเวลาเสมอ · แถวที่ไม่มีเวลาไปท้ายสุด ไม่ให้แทรกเป็น "ครั้งแรก" โดยบังเอิญ
+     ⚠️ ห้ามใช้ (a.t||0)-(b.t||0) — แถวไร้เวลาจะกลายเป็นเวลา 0 = เก่าที่สุด = ถูกเลือกเป็นครั้งแรก */
+  var _tk=function(r){ var t=(r&&r.t!=null&&r.t!=='')?Number(r.t):null; return (t==null||isNaN(t))?null:t; };
+  var byT=bl.slice().sort(function(a,b){
+    var ka=_tk(a), kb=_tk(b);
+    if(ka==null&&kb==null) return 0;
+    if(ka==null) return 1;
+    if(kb==null) return -1;
+    return ka-kb; });
+  if(byT.length){
+    out.fst=sc(byT[0]);
+    byT.slice(1).forEach(function(r){ var v=sc(r); if(out.retake==null||v>out.retake) out.retake=v; });
   }
+  /* 🚩 ธงเดิมเคยหมายถึง "คนกลุ่มที่ถูกคิดด้วยวิธีต่างจากเพื่อน" — ตอนนี้ทุกคนคิดด้วยวิธีเดียวกันแล้ว
+     คงธงไว้ในความหมายใหม่: **แถวของคนนี้ไม่มีเลขครั้งเลยสักแถว** (ข้อมูลยุคก่อนบันทึกเลขครั้ง)
+     ใช้แยกยุคข้อมูลได้ ⛔ ไม่ได้ใช้ตัดสินคะแนนอีกต่อไป */
+  out.noAtt=byT.length>1&&byT.every(function(r){ return num(r)==null; });
   var _f=(out.fst==null)?0:out.fst;   /* คะแนนที่ "ได้รับ" ยังเป็นเลขเสมอ — ความไม่รู้อยู่ที่ fst ช่องเดียว */
   out.boss=(out.retake==null)?_f:Math.max(_f, Math.min(out.retake, BOSS_RETAKE_CAP));
   return out;
@@ -6850,7 +6882,11 @@ function clsScoresHtml(r){
             เพราะผมตรวจ "รูปทรงหนึ่งของความผิด" (`'ระดับ '+ach.lv`) ไม่ได้ตรวจ "คุณสมบัติ"
             บรรทัดนี้พิมพ์เลขเปล่า ๆ (`= 6`) และอยู่นอก clsAchCell จึงรอดสายตาไปทั้งรุ่น
             ⇒ รอบนี้แก้ทั้งโค้ดและเขียนข้อสอบใหม่ให้ตรวจคุณสมบัติแทนรูปทรง (P-KAN1-04 ของผมเอง) */
-      '<div style="width:100%;margin-top:4px" class="muted">📝 <b>คะแนนสอบ</b> ในตาราง = คะแนนที่ผู้เรียนได้รับ (สอบซ่อมกดเพดาน 21) · เกณฑ์ผ่านแบบทดสอบ = 21/30 (70%) · ตัวเลขวิจัยใช้คะแนนสอบครั้งแรก (ดูหน้าวิจัยเว็บกลาง)</div>'+
+      /* 🎓 [V.7.99.82 · มติครู 8 ก.ย. ค่ำ — นิยาม ข] เติมประโยควิธีคิดลงเชิงอรรถ **บนจอ** (ไม่ใช่ tooltip)
+         เพื่อคงเงื่อนไขผูกพันของ [AUDIT] 1 ก.ย. ไว้ในรูปที่ตรงกับของจริง:
+         เดิมเป็นไอคอน 🕘 ของ "คนส่วนน้อยที่ถูกคิดต่างจากเพื่อน" · ตอนนี้ทุกคนคิดวิธีเดียวกัน
+         ⇒ ข้อความระดับตารางคือที่ที่ถูกต้อง ⛔ ไม่ใช่การถอดความโปร่งใสออก */
+      '<div style="width:100%;margin-top:4px" class="muted">📝 <b>คะแนนสอบ</b> ในตาราง = คะแนนที่ผู้เรียนได้รับ (สอบซ่อมกดเพดาน 21) · เกณฑ์ผ่านแบบทดสอบ = 21/30 (70%) · ตัวเลขวิจัยใช้คะแนนสอบครั้งแรก (ดูหน้าวิจัยเว็บกลาง) · 🕘 <b>คะแนนสอบครั้งแรกของทุกคนคิดจาก "แถวสอบแรกสุดตามเวลา"</b> ตามมติครู 8 ก.ย. 2569 — ⛔ ไม่ใช้ "เลขครั้ง" ที่เกมเก็บไว้ในเครื่องผู้เล่น เพราะเลขนั้นรีเซ็ตได้เมื่อเปลี่ยนเครื่อง/ล้างข้อมูลเว็บ และในโหมดเล่นกลุ่มเป็นเลขของเครื่องที่ส่ง</div>'+
       '<div style="width:100%;margin-top:4px" class="muted">🏆 <b>คะแนนเก็บ/คะแนนสอบ</b> ใช้ป้ายคุณภาพของผลสัมฤทธิ์ (คนละชุดกับระดับสมรรถนะ) เทียบเป็น % ของคะแนนเต็ม: '+
         [[6,'ดีเยี่ยม','≥80%'],[5,'ดี','≥70%'],[4,'พอใช้','≥60%'],[3,'ผ่าน','≥50%']].map(function(A){
           return '<b style="color:'+achClr(A[0])+'">'+A[2]+' = '+A[1]+'</b>'; }).join(' · ')+
@@ -7596,11 +7632,24 @@ var CORE6=[
    หลักการที่ใช้ทั้งชุด: คะแนนมาจากหลักฐานในเกมเท่านั้น · ครู/เพื่อน/ตนเอง = หลักฐานประกอบไว้เทียบเคียง
    เพดานระดับผูกกับปริมาณหลักฐาน 4/8/15 ชิ้น (ต่ำกว่า 4 ชิ้น = ยังไม่สรุประดับ) */
 var CORE6_STATUS={
-  HT:{st:'score', note:'ประเมินเต็มรูปแบบ: หลักฐาน 4 แหล่ง A20·B30·C25·D25 → 4 ด้านการคิด (CTC/STM/CRT/PRB) → ระดับ 3-6 (เกณฑ์เดิม ไม่เปลี่ยนแปลงตามคำสั่งครู) · หลักฐานรวมกว่า 90 ชิ้น จึงเปิดถึงระดับ 6 ได้ตามปกติ'},
+  /* 🎓 [V.7.99.81 · ADR-012] ถ้อยคำเดิมบอกว่า HT ตัดสินจาก "4 แหล่ง A20 B30 C25 D25"
+     ซึ่ง **ยกเลิกแล้วตั้งแต่ V.7.99.74 ตามมติครู 29 ส.ค.** ⇒ คำอธิบายบนจอยังโฆษณาวิธีที่เลิกใช้
+     โรคเดียวกับ TW ข้างล่าง แค่กลับด้าน: **หน้าจอห้ามสัญญาสิ่งที่ตัวเองไม่มีให้** */
+  HT:{st:'score', note:'ประเมินเต็มรูปแบบ: ตัดสินจาก 4 ด้านการคิด (CTC/STM/CRT/PRB) โดยตรง — เฉลี่ยเฉพาะด้านย่อยที่มีหลักฐาน ด้านย่อยที่ไม่มีหลักฐานตัดออกจากตัวหาร ไม่ใช่ให้ 0 · A·B·C·D คงไว้เป็นแหล่งที่มาของหลักฐานเท่านั้น ไม่ใช่สูตรตัดสิน · หลักฐานรวมกว่า 90 ชิ้น จึงเปิดถึงระดับ 6 ได้ตามปกติ'},
   NS:{st:'score', note:'ข้อสอบ/ภารกิจด่านทรัพยากร-สิ่งแวดล้อม (ด่านที่ 3·7·8·9·10) + เกณฑ์ EE·ST ของด่านที่ 13 กาญจนบุรี 2050 · เล่นครบได้หลักฐาน ~30 ชิ้น เปิดถึงระดับ 6'},
   CZ:{st:'score', note:'ข้อสอบ/ภารกิจด่านมรดก-ส่วนรวม (ด่านที่ 2·3·5·11) + เกณฑ์ SD·PA ของด่านที่ 13 กาญจนบุรี 2050 · เล่นครบได้หลักฐาน ~25 ชิ้น เปิดถึงระดับ 6'},
   CM:{st:'capped', note:'คำตอบเขียน 3 ข้อในด่านที่ 13 (ข้อละ 0-4 รวม 12) — บทเรียนนี้วัดการสื่อสารผ่านการเขียนเท่านั้น หลักฐานเพียง 3 ชิ้น จึงสรุปได้สูงสุดระดับ 4 · ครูปรับขึ้นเองได้ที่หน้าเทียบผล'},
-  TW:{st:'none', note:'บทเรียนนี้ไม่มีการประเมิน — เกมภาค 1 ไม่ได้เก็บหลักฐานการทำงานร่วมกันเป็นข้อมูล มีเพียงเพื่อนประเมินกับครูสังเกตซึ่งเป็นหลักฐานประกอบ (หลัก CBE ห้ามตัดสินระดับจากหลักฐานประกอบอย่างเดียว) · ครูตัดสินระดับเองได้ที่หน้าเทียบผล'},
+  /* 🔴 [V.7.99.81 · ครูแจ้ง 8 ก.ย. ค่ำ คำต่อคำ "ไม่ควรมีข้อความขึ้นว่าไม่มีการประเมิน แสดงอีกแล้ว"]
+     บรรทัดนี้คือ **ประกาศตายตัว** ว่า TW ไม่ถูกประเมิน — ตายจริงตั้งแต่ `V.7.99.59` (เกมเริ่มเก็บ `teamStat`)
+     และตายสนิทตั้งแต่ `V.7.99.74` (ใส่สูตร tw1/tw2/tw3) ⇒ **โค้ดยังเชื่อประกาศเก่า**
+     🔑 ข้อเท็จจริงผิดข้อเดียวนี้ป้อน **สี่ปลายทาง** พร้อมกัน:
+        ① ตารางจำนวนนักเรียนรายระดับ ⇒ "ไม่มีการประเมินในบทเรียนชุดนี้"
+        ② ป้ายสถานะในแถบสมรรถนะ 6 ด้าน ⇒ ชิป "ไม่มีการประเมิน"
+        ③ ชิปสมรรถนะในตารางตัวชี้วัดของผู้ดูแล ⇒ แสดงเป็นด้านที่ไม่ให้คะแนน
+        ④ 🔴 **ทะเบียนมาตรฐานที่ส่งขึ้นเว็บกลาง** — `gpStd…` ข้าม `st==='none'` ⇒ **TW ไม่เคยถูกส่งขึ้นทะเบียนเลย**
+     🔒 หลักที่ผมตั้งเองและชนซ้ำเป็นครั้งที่สี่: **หน้าจอห้ามปฏิเสธสิ่งที่ตัวเองมี**
+     ⛔ แก้เฉพาะ *คำประกาศ* — ไม่แตะสูตร ไม่แตะเกณฑ์ ไม่แตะเพดาน (ครูสั่ง "tw นิ่งแล้ว ข้อมูลถูกแล้ว") */
+  TW:{st:'score', note:'ประเมินจากพฤติกรรมการทำงานร่วมกันที่เกมบันทึกเอง (teamStat) ทุกครั้งที่เล่นกลุ่ม 2 คนขึ้นไป — ด้านย่อย tw1 ความสม่ำเสมอของการแบ่งงาน · tw2 การกลับมาแก้เมื่อผิดและความต่อเนื่องของทีม · tw3 การช่วยแก้ให้เพื่อน · เพื่อนประเมินและครูสังเกตเป็นหลักฐานประกอบ ไม่ใช่ตัวตัดสินระดับ · หลักฐานต่ำกว่า 4 ชิ้น = ยังไม่ตัดสินระดับ ไม่เดาให้'},
   SM:{st:'score', note:'ดัชนีพฤติกรรมจากการเล่น: ความครบของด่านที่ทำสำเร็จ 50% + พัฒนาการจากการกลับมาเล่นซ้ำ 50% · หลักฐาน 1 ชิ้น = 1 ด่านที่ทำสำเร็จ (เล่นครบ 12 ด่าน → เปิดได้ถึงระดับ 5)'}
 };
 
@@ -7622,25 +7671,33 @@ var CORE6_RUBRIC={
         5:'ทำสำเร็จเกือบครบทุกด่านด้วยตนเอง และกลับมาเล่นซ้ำจนคะแนนดีขึ้นจริง',
         6:'ทำครบทุกด่าน และพัฒนาคะแนนขึ้นชัดเจนหลายด่านโดยไม่ต้องมีคนคอยกระตุ้น'},
     warn:'เป็นดัชนีเชิงพฤติกรรมจากร่องรอยการเล่น ไม่ครอบคลุมเรื่องการจัดการอารมณ์ — ครูควรใช้ประกอบการสังเกตในชั้นเรียน ไม่ใช้ตัดสินลำพัง' },
-  HT:{ ev:'หลักฐาน 4 แหล่ง: A ข้อวิเคราะห์ระหว่างด่าน (20) · B ภารกิจ/มินิเกม (30) · C แบบทดสอบหลังเรียน (25) · D เกณฑ์ผลงานกาญจนบุรี 2050 (25)',
-    who:'ระบบ (อัตโนมัติ) — ยกเว้นคำตอบเขียน 3 ข้อในแหล่ง D ที่ครูตรวจ',
+  /* 🔴 [V.7.99.83 · ครูสั่ง 8 ก.ย. ค่ำ · ADR-012] ถ้อยคำเดิมบอกว่า HT ตัดสินจาก "หลักฐาน 4 แหล่ง A(20) B(30) C(25) D(25)"
+     ⛔ สูตรถ่วงน้ำหนักนั้น **ยกเลิกไปแล้วตั้งแต่ V.7.99.74** ตามมติครู 29 ส.ค. (`ADR-012`)
+     🔴 และทะเบียนนี้ **ถูกส่งขึ้นเว็บกลาง** ⇒ เราประกาศเกณฑ์ที่เลิกใช้ต่อสาธารณะมาตลอด
+     ✅ A·B·C·D ยังคงอยู่ได้ในฐานะ **แหล่งที่มาของหลักฐาน** ตามที่ `ADR-012` อนุญาต ⛔ แต่ไม่ใช่สูตรตัดสิน */
+  HT:{ ev:'ข้อคิดวิเคราะห์ระหว่างด่าน · ภารกิจและมินิเกม · ข้อคิดวิเคราะห์ในด่านบอส · เกณฑ์ผลงานด่านกาญจนบุรี 2050 — ทุกชิ้นถูกจับคู่เข้ากับ 1 ใน 4 ด้านการคิด (CTC/STM/CRT/PRB) แล้วตัดสินจากด้านย่อย ⛔ ไม่ใช่คะแนนรวมถ่วงน้ำหนัก',
+    who:'ระบบ (อัตโนมัติ) — ยกเว้นคำตอบเขียน 3 ข้อในด่านกาญจนบุรี 2050 ที่ครูตรวจ',
     cbe:'องค์ประกอบตาม CBE 4 ด้าน: คิดอย่างมีวิจารณญาณ (CTC) · คิดเชิงระบบ (STM) · คิดสร้างสรรค์ (CRT) · คิดแก้ปัญหา (PRB)',
-    lv:{3:'คะแนนรวมต่ำกว่า 50 — ยังตอบตามความจำ ยังไม่แสดงการวิเคราะห์',
-        4:'50-64 — วิเคราะห์ได้บางสถานการณ์ แต่ยังไม่สม่ำเสมอทุกด้าน',
-        5:'65-79 — วิเคราะห์และให้เหตุผลได้ในสถานการณ์ที่ไม่ซับซ้อน ครบเกือบทุกด้าน',
-        6:'≥80 และต้องมีหลักฐานครบทั้ง 4 แหล่ง + ทั้ง 4 ด้านการคิด ≥ 65 ทุกด้าน'},
-    keep:'เกณฑ์ชุดนี้เป็นการประเมินหลักของงานวิจัย — ไม่มีการเปลี่ยนแปลงใด ๆ ในรอบนี้',
-    how:'วิธีประเมินโดยย่อ: นักเรียนเล่นตามปกติ → ระบบเก็บคำตอบรายข้อและผลภารกิจ → จับคู่แต่ละข้อเข้ากับ 1 ใน 4 ด้านการคิด → ถ่วงน้ำหนักเป็นคะแนนเต็ม 100 → ตัดระดับ 3-6' },
+    lv:{3:'ต่ำกว่า 50% — ยังตอบตามความจำ ยังไม่แสดงการวิเคราะห์',
+        4:'50-64% — วิเคราะห์ได้บางสถานการณ์ แต่ยังไม่สม่ำเสมอทุกด้าน',
+        5:'65-79% — วิเคราะห์และให้เหตุผลได้ในสถานการณ์ที่ไม่ซับซ้อน ครบเกือบทุกด้าน',
+        6:'ตั้งแต่ 80% ขึ้นไป'},
+    keep:'[ADR-012 · มติครู 29 ส.ค. 2569] เลิกใช้คะแนนรวมถ่วงน้ำหนักตัดสินระดับ — ตัดสินจากด้านย่อย 4 ด้านการคิดเหมือนสมรรถนะอื่นทุกด้าน',
+    how:'วิธีประเมินโดยย่อ: นักเรียนเล่นตามปกติ → ระบบเก็บคำตอบรายข้อและผลภารกิจ → จับคู่แต่ละชิ้นเข้ากับ 1 ใน 4 ด้านการคิด → เฉลี่ยเฉพาะด้านย่อยที่มีหลักฐาน (ด้านที่ไม่มีหลักฐานตัดออกจากตัวหาร ⛔ ไม่ใช่ให้ 0) → ตัดระดับ 3-6' },
   CM:{ ev:'คำตอบเขียนอธิบายเหตุผล 3 ข้อ ในด่านที่ 13 กาญจนบุรี 2050 — ครูให้คะแนน "การสื่อสาร" แยกช่องจากคะแนน "การคิด" ข้อละ 0-4 (รวม 12)',
     who:'ครู (หน้า 📝 ตรวจคำตอบเขียน ของแต่ละห้อง)',
     cbe:'พฤติกรรมบ่งชี้ ป.4-6: ส่งสารเรื่องราวใกล้ตัวผ่านภาษา โดยเลือกให้เหมาะกับบุคคลและกาลเทศะ · อ่าน/ฟังแล้วตอบได้ตรงประเด็น',
     scale:'เกณฑ์ให้คะแนนรายข้อ (0-4): 0 = ไม่ตอบหรือตอบไม่ตรงคำถาม · 1 = เขียนสั้นมากจนจับใจความไม่ได้ · 2 = พอสื่อความได้แต่ยังวกวน ขาดคำเชื่อม · 3 = เรียบเรียงเข้าใจง่าย ลำดับความคิดชัดเจน · 4 = เรียบเรียงดีมาก มีตัวอย่างหรือคำเชื่อมที่ทำให้ผู้อ่านเข้าใจทันที',
     lv:{3:'รวม 0-5 คะแนน',4:'รวม 6-7 คะแนน',5:'รวม 8-9 คะแนน',6:'รวม 10-12 คะแนน'} },
-  TW:{ ev:'เพื่อนร่วมทีมประเมินกันเองในเกม 3 ข้อ ตาม 3 องค์ประกอบของ CBE (ข้อละ 0-4 รวม 12) — เฉลี่ยจากเพื่อนทุกคนที่ประเมิน',
-    who:'เพื่อนร่วมทีม (peer assessment) — CBE แนะนำการประเมินแบบพหุภาคี',
+  /* 🔴 [V.7.99.81] ทะเบียนนี้ถูกส่งขึ้นเว็บกลางเมื่อ `CORE6_STATUS.st` ไม่ใช่ 'none'
+     ⇒ พอเปิด TW ถ้อยคำตรงนี้จะกลายเป็น **"เกณฑ์ที่ประกาศต่อสาธารณะ"** ⛔ จึงต้องตรงกับเอนจินจริง
+     เดิมบรรยายว่าตัดสินจากคะแนนเพื่อนประเมิน 0-12 ซึ่งไม่ใช่วิธีที่ใช้จริงตั้งแต่ `V.7.99.74`
+     ⛔ ผมไม่ได้เปลี่ยนเกณฑ์ — ผมทำให้ *คำอธิบาย* ตรงกับเกณฑ์ที่ครูสั่งว่านิ่งแล้ว */
+  TW:{ ev:'พฤติกรรมการทำงานร่วมกันที่เกมบันทึกเอง (teamStat) ทุกครั้งที่เล่นกลุ่ม 2 คนขึ้นไป — 3 ด้านย่อย: tw1 ความสม่ำเสมอของการแบ่งงาน · tw2 การกลับมาแก้เมื่อผิดและความต่อเนื่องของทีม · tw3 การช่วยแก้ให้เพื่อน · เพื่อนประเมินและครูสังเกต = หลักฐานประกอบ ไม่ใช่ตัวตัดสินระดับ',
+    who:'ระบบ (อัตโนมัติจากการเล่นกลุ่ม) · เพื่อนร่วมทีมและครูเป็นหลักฐานประกอบ',
     cbe:'พฤติกรรมบ่งชี้ ป.4-6: เป็นสมาชิกที่รับผิดชอบบทบาทของตนเองและช่วยเหลือเพื่อนในทีม ปฏิบัติต่อผู้อื่นอย่างเป็นมิตร',
-    scale:'3 ข้อที่เพื่อนตอบ: (1) ช่วยคิดและเสนอความเห็นให้ทีม [เป็นสมาชิกทีมที่ดี/ภาวะผู้นำ] · (2) ทำหน้าที่ที่ตกลงกันไว้จนสำเร็จ [ร่วมมือรวมพลังอย่างเป็นระบบ] · (3) รับฟังเมื่อคิดต่างกัน ไม่เอาแต่ใจ [สร้างความสัมพันธ์และจัดการความขัดแย้ง]',
-    lv:{3:'รวม 0-5 คะแนน',4:'รวม 6-7 คะแนน',5:'รวม 8-9 คะแนน',6:'รวม 10-12 คะแนน'},
+    scale:'ด้านย่อยละ 0-100% แล้วเฉลี่ยเฉพาะด้านย่อยที่มีหลักฐาน — ด้านย่อยที่ไม่มีหลักฐานตัดออกจากตัวหาร ไม่ใช่ให้ 0 · หลักฐานประกอบ (แสดงแยก ไม่ใช้ตัดสิน) 3 ข้อที่เพื่อนตอบ: (1) ช่วยคิดและเสนอความเห็นให้ทีม [เป็นสมาชิกทีมที่ดี/ภาวะผู้นำ] · (2) ทำหน้าที่ที่ตกลงกันไว้จนสำเร็จ [ร่วมมือรวมพลังอย่างเป็นระบบ] · (3) รับฟังเมื่อคิดต่างกัน ไม่เอาแต่ใจ [สร้างความสัมพันธ์และจัดการความขัดแย้ง]',
+    lv:{3:'ต่ำกว่า 50%',4:'50-64%',5:'65-79%',6:'ตั้งแต่ 80% ขึ้นไป'},
     warn:'ประเมินได้เฉพาะนักเรียนที่เล่นเป็นกลุ่ม 2-3 คนต่อเครื่อง · เด็ก ป.4 อาจให้คะแนนตามความสนิท ครูควรดูประกอบการสังเกตจริง' },
   CZ:{ ev:'ข้อสอบ/ภารกิจในด่านที่ 2 สุสานทหารสัมพันธมิตร · ด่านที่ 3 ต้นจามจุรียักษ์ · ด่านที่ 5 ช่องเขาขาด · ด่านที่ 11 สะพานมอญ &amp; เจดีย์สามองค์ + เกณฑ์ SD (ออกแบบทางออกเพื่อส่วนรวม) และ PA (ปรับแผนเมื่อมีเสียงคัดค้าน) ของด่านที่ 13',
     who:'ระบบ (อัตโนมัติจากการเล่น)',
@@ -7721,7 +7778,8 @@ function indRender(){
   var by=indBuild();
   /* [V.7.70 ข้อ 7 + เพิ่มเติมข้อ 2] เรียงตามเส้นทางบนแผนที่ — ด่านบอส (แบบทดสอบหลังเรียน) อยู่ล่างสุดตามลำดับนี้เอง */
   var keys=IND_ORDER.filter(function(k){ return by[k]; }).concat(Object.keys(by).filter(function(k){ return IND_ORDER.indexOf(k)<0; }));
-  var W=CV2.W;
+  /* [V.7.99.83] เดิมดึง `CV2.W` มาแสดงน้ำหนัก A·B·C·D บนหน้าตัวชี้วัด — เลิกแสดงแล้วตาม ADR-012
+     ⛔ ตัวเอนจินยังคำนวณ A·B·C·D ไว้เทียบย้อนได้เหมือนเดิม ไม่ถูกแตะ */
   var chip=function(c,n){ return '<span style="display:inline-block;background:'+IND_COMP_CLR[c]+'22;color:'+IND_COMP_CLR[c]+';border:1px solid '+IND_COMP_CLR[c]+'55;border-radius:999px;padding:1px 8px;font-size:11px;font-weight:800;margin:1px 2px">'+c+' × '+n+'</span>'; };
 
   /* ---------- [ข้อ 1] ตารางที่ 1: ด่าน/ภารกิจ · ตัวชี้วัด · สมรรถนะหลัก ---------- */
@@ -7733,7 +7791,8 @@ function indRender(){
     var indHtml=String(indTxt||'').split('·').map(function(c){ c=c.trim(); if(!c) return '';
       var t=IND_CODE_TEXT[c]||''; return '<div style="font-size:11.5px;line-height:1.45"><b>'+esc(c)+'</b>'+(t?' <span class="muted">'+esc(t)+'</span>':'')+'</div>'; }).join('')||'<span class="muted">—</span>';
     var core=CORE6.filter(function(c){ return compSel.indexOf(c[0])>=0; }).map(function(c){
-      var scored=(CORE6_STATUS[c[0]]||{}).st==='score';
+      /* [V.7.99.81] เดิม ==='score' ⇒ `CM` ที่สถานะ 'capped' ถูกวาดเป็นด้านที่ไม่ให้คะแนน — โรคเดียวกับ badge() */
+      var scored=(CORE6_STATUS[c[0]]||{}).st!=='none';
       return '<span title="'+esc(c[1])+'" style="display:inline-block;background:'+c[2]+(scored?'26':'14')+';color:'+c[2]+';border:1px solid '+c[2]+(scored?'88':'44')+';border-radius:999px;padding:1px 8px;font-size:11px;font-weight:'+(scored?'800':'600')+';margin:1px 2px">'+(scored?'★ ':'')+esc(c[1])+'</span>'; }).join('')||'<span class="muted">—</span>';
     return '<tr>'+
       '<td style="font-weight:700;vertical-align:top;text-align:left;word-break:break-word">'+esc(indStageLabel(k))+'</td>'+
@@ -7785,14 +7844,16 @@ function indRender(){
 
   /* [V.7.70 ข้อ 6] ข้อมูลตารางรายละเอียดหลักฐาน 4 แหล่ง — นับจากแผนผังจริงของเครื่องคิดคะแนน (CV2) ไม่ได้พิมพ์มือ */
   var SRC_META={
-    A:{ name:'ข้อวิเคราะห์ระหว่างเล่นด่าน', unit:'ข้อ', w:W.A,
-        how:'สัดส่วนข้อที่ตอบถูกจากข้อวิเคราะห์ทั้งหมดที่ทำไป × '+W.A+' (ตอบครั้งแรกของแต่ละข้อ)' },
-    B:{ name:'ภารกิจ/มินิเกมเชิงปฏิบัติ', unit:'ภารกิจ', w:W.B,
-        how:'คะแนนแต่ละภารกิจถ่วงน้ำหนักตามความยาก รวมแล้วเทียบเป็น '+W.B+' คะแนน' },
-    C:{ name:'ข้อวิเคราะห์ในแบบทดสอบหลังเรียน', unit:'ข้อ', w:W.C,
-        how:'สัดส่วนข้อที่ตอบถูกในด่านบอส × '+W.C+' (วัดว่าคิดเป็นหลังเรียนครบแล้วหรือยัง)' },
-    D:{ name:'เกณฑ์ผลงานกาญจนบุรี 2050', unit:'เกณฑ์', w:W.D,
-        how:'คะแนน 6 เกณฑ์ผลงาน (ครูตรวจคำตอบเขียน 3 ข้อ รวมอยู่ในนี้) เทียบเป็น '+W.D+' คะแนน' }
+    /* 🔴 [V.7.99.83 · ครูสั่ง · ADR-012] ตัดช่อง `w` (น้ำหนัก) ออกทั้งสี่แหล่ง และตัดตัวเลขน้ำหนักออกจาก `how`
+       ตารางนี้เหลือหน้าที่เดียวคือ **บอกว่าหลักฐานเก็บจากที่ไหน** ⛔ ไม่ใช่สูตรให้คะแนน */
+    A:{ name:'ข้อวิเคราะห์ระหว่างเล่นด่าน', unit:'ข้อ',
+        how:'เก็บคำตอบครั้งแรกของแต่ละข้อ แล้วจับคู่ข้อนั้นเข้ากับด้านการคิดที่มันวัด' },
+    B:{ name:'ภารกิจ/มินิเกมเชิงปฏิบัติ', unit:'ภารกิจ',
+        how:'เก็บผลของแต่ละภารกิจ แล้วจับคู่เข้ากับด้านการคิดที่ภารกิจนั้นวัด' },
+    C:{ name:'ข้อวิเคราะห์ในแบบทดสอบหลังเรียน', unit:'ข้อ',
+        how:'เก็บคำตอบข้อวิเคราะห์ในด่านบอส แล้วจับคู่เข้ากับด้านการคิดที่ข้อนั้นวัด' },
+    D:{ name:'เกณฑ์ผลงานกาญจนบุรี 2050', unit:'เกณฑ์',
+        how:'เก็บผล 6 เกณฑ์ผลงาน (ครูตรวจคำตอบเขียน 3 ข้อ รวมอยู่ในนี้) แล้วจับคู่เข้ากับด้านการคิด' }
   };
   var srcStages={A:[],B:[],C:[],D:[]}, srcCount={A:0,B:0,C:0,D:0};
   keys.forEach(function(k){ ['A','B','C','D'].forEach(function(sk){
@@ -7807,7 +7868,6 @@ function indRender(){
       '<td style="font-weight:700">'+esc(m.name)+'</td>'+
       '<td style="font-size:11.5px">'+esc(where)+'</td>'+
       '<td style="text-align:center;font-weight:800">'+srcCount[sk]+' '+esc(m.unit)+'</td>'+
-      '<td style="text-align:center;font-weight:800;color:#047857">'+m.w+'</td>'+
       '<td style="font-size:11.5px">'+esc(m.how)+'</td></tr>';
   }).join('');
 
@@ -7832,26 +7892,29 @@ function indRender(){
     '<div class="card" style="margin-bottom:12px">'+
       '<h2>ตารางที่ 3 · สมรรถนะการคิดขั้นสูง (HOTS) — องค์ประกอบย่อยและหลักฐาน</h2>'+
       '<div style="overflow-x:auto"><table class="cls-tbl"><thead><tr><th style="width:60px;text-align:center">รหัส</th><th>สมรรถนะการคิดขั้นสูงด้าน</th><th style="min-width:200px">หลักฐาน (A · B · C · D)</th></tr></thead><tbody>'+rows2+'</tbody></table></div>'+
-      '<div class="muted" style="font-size:12px;margin-top:8px">น้ำหนักรวม: A '+W.A+' · B '+W.B+' · C '+W.C+' · D '+W.D+' = 100 คะแนน → ระดับ 6 (≥80) · 5 (65-79) · 4 (50-64) · 3 (&lt;50) · ระดับ 6 ต้องมีหลักฐานครบ 4 แหล่งและทุกด้าน ≥ 65</div>'+
+      /* 🔴 [V.7.99.83 · ครูสั่ง · ADR-012] ประโยคเดิมประกาศสูตรถ่วงน้ำหนัก 100 คะแนนที่ยกเลิกแล้ว */
+      '<div class="muted" style="font-size:12px;margin-top:8px">🎓 <b>[ADR-012 · มติครู 29 ส.ค. 2569]</b> ระดับของการคิดขั้นสูง <b>ตัดสินจากด้านย่อย 4 ด้านการคิด (CTC/STM/CRT/PRB)</b> เหมือนสมรรถนะอื่นทุกด้าน — เฉลี่ยเฉพาะด้านที่มีหลักฐาน ด้านที่ไม่มีหลักฐานตัดออกจากตัวหาร ⛔ ไม่ใช่ให้ 0 · ระดับ 6 (≥80%) · 5 (65-79%) · 4 (50-64%) · 3 (&lt;50%) · ⛔ <b>เลิกใช้คะแนนรวมถ่วงน้ำหนักตัดสินระดับแล้ว</b></div>'+
       /* [V.7.70 ข้อ 6 ตามที่ครูขอ] ตารางรายละเอียดหลักฐาน A·B·C·D แบบละเอียด ต่อท้ายตารางที่ 2 */
-      '<h3 style="margin:16px 0 4px;font-size:14px">รายละเอียดหลักฐาน 4 แหล่ง (A · B · C · D)</h3>'+
+      '<h3 style="margin:16px 0 4px;font-size:14px">แหล่งที่มาของหลักฐาน (A · B · C · D) — <span style="font-weight:600;font-size:12.5px">บอกว่าเก็บจากที่ไหน ⛔ ไม่ใช่สูตรให้คะแนน</span></h3>'+
       '<div class="muted" style="font-size:12px;margin-bottom:7px">ทุกแหล่งเก็บอัตโนมัติจากการเล่นจริง ยกเว้นแหล่ง D ส่วนคำตอบเขียน 3 ข้อ ที่ครูเป็นผู้ตรวจให้คะแนน</div>'+
       '<div style="overflow-x:auto"><table class="cls-tbl"><thead><tr>'+
         '<th style="width:56px;text-align:center">แหล่ง</th><th style="min-width:150px">เก็บจากอะไร</th>'+
         '<th style="min-width:190px">อยู่ในด่านใดบ้าง</th><th style="width:78px;text-align:center">จำนวน</th>'+
-        '<th style="width:66px;text-align:center">น้ำหนัก</th><th style="min-width:180px">วิธีคิดคะแนน</th>'+
+        /* [V.7.99.83] ตัดคอลัมน์ "น้ำหนัก" ออก — มันคือสูตรที่ ADR-012 ยกเลิก */
+        '<th style="min-width:180px">วิธีเก็บ</th>'+
       '</tr></thead><tbody>'+rowsABCD+'</tbody></table></div>'+
     '</div>'+
     '<div class="card" style="margin-bottom:12px">'+
       '<h2>ตารางที่ 4 · หลักฐานและด้านการคิดขั้นสูงที่วัดในแต่ละด่าน</h2>'+
       '<div style="overflow-x:auto"><table class="cls-tbl"><thead><tr><th>ด่าน / ภารกิจ</th><th style="min-width:230px">หลักฐาน</th><th style="min-width:150px">ด้านการคิดขั้นสูงที่วัด</th></tr></thead><tbody>'+rows3+'</tbody></table></div>'+
     '</div>'+
-    /* [V.7.72 ข้อ 5 ตามที่ครูขอ] "เกณฑ์การประเมิน" ของการคิดขั้นสูง (เดิมอยู่ในหน้าต่างที่กดจากแถบบน)
-       ย้ายมาอยู่ในหน้าตัวชี้วัด/สมรรถนะ — เอกสารเกณฑ์ทั้งหมดจึงอยู่หน้าเดียวจบ พิมพ์/ส่งตรวจได้ในครั้งเดียว */
-    '<div class="card" style="margin-bottom:12px" id="ind-hots-crit">'+
-      '<h2>เกณฑ์การประเมินสมรรถนะการคิดขั้นสูง (โดยละเอียด)</h2>'+
-      clsHotsCriteriaHtml()+
-    '</div>';
+    /* 🔴 [V.7.99.83 · ครูสั่ง 8 ก.ย. ค่ำ] การ์ดนี้เคยฝังแผง `clsHotsCriteriaHtml()` ซึ่งเป็น
+       **เอกสารของสูตรถ่วงน้ำหนัก A·B·C·D ทั้งใบ** (ตารางน้ำหนัก 4 แหล่ง · เงื่อนไข "ครบ 4 แหล่ง" · คะแนนรวม 100)
+       ⇒ ครูส่งภาพหน้าจอมาสั่งว่า *"ควรตัดส่วนนี้ออก เนื่องจากเลิกใช้การดึงคะแนนแบบ A B C D แล้ว"*
+       ⇒ ตัดการ์ดออก และลบฟังก์ชันทั้งสองตัวทิ้ง — ⛔ ไม่ให้มีทางกลับมาอีก
+       ✅ เนื้อหาที่ `ADR-012` รับรอง (ภาพรวม 4 ด้านการคิด) ยังเข้าถึงได้ที่ปุ่ม 🧠 4 ด้านการคิด (`.82`)
+          และ **ตารางที่ 2/3 ในหน้านี้เองก็มีเกณฑ์ครบแล้ว** ⇒ ไม่มีข้อมูลไหนหายไปจากครู */
+    '';
 }
 function indSave(k){
   var el=document.getElementById('ind-i-'+k), sel=document.getElementById('ind-c-'+k), st=document.getElementById('ind-st-'+k);
