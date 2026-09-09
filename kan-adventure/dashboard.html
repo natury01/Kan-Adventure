@@ -218,7 +218,7 @@
 </style>
 <script>/* [ปลูกโดย build_repo.py] เลขรุ่นจาก game.html ที่เดียว
    ถ้าไม่มีบรรทัดนี้ ท่อส่งขึ้นเว็บกลางจะเงียบทั้งเส้นโดยไม่มีข้อความเตือน */
-var GAME_VERSION = 'V.7.99.83-IX2050-2569.105';</script>
+var GAME_VERSION = 'V.7.99.85-IX2050-2569.106';</script>
 </head>
 <body>
 
@@ -5798,61 +5798,14 @@ function clsCore6Detail(t){
         '<span class="muted" style="flex:1;min-width:200px;font-size:10.5px">'+esc(r.src||'')+(r.note?(' · '+esc(r.note)):'')+'</span></div>';
     }).join('')+'</div>';
 }
-/* ════════ 🎓 [V.7.99.82 · มติครู 8 ก.ย. ค่ำ] แผงเรดาร์ 4 ด้านการคิด — แยกออกมาเป็นของตัวเอง ════════
-   ที่มา: เรดาร์นี้เคยอยู่ในแผง "รายละเอียดการประเมินการคิดขั้นสูง" ซึ่งครูสั่งถอดออกใน `V.7.99.81`
-          เพราะแผงนั้นสร้างจาก **สูตรถ่วงน้ำหนัก A20·B30·C25·D25** ที่ `ADR-012` ยกเลิกไปแล้ว
-   ⇒ ครูเคาะว่า "ทำแผงแยกให้ — มีแต่เรดาร์ ไม่มี A·B·C·D" ⇒ ยกเฉพาะส่วนที่ `ADR-012` รับรองออกมา
-   ⛔ ฟังก์ชันนี้ **ไม่แตะ `CV2.W` และไม่อ่าน `v2.A/B/C/D` เลยแม้แต่ช่องเดียว** — อ่าน `v2.comp` อย่างเดียว
-   ⛔ ไม่คำนวณระดับ ไม่ตัดสินอะไร — เป็นภาพรวมของทั้งชั้นเพื่อให้ครูเห็นว่าด้านไหนควรเสริม */
-function clsHtRadarHtml(){
-  var students=(cls.students||[]);
-  if(cls.sumFilter&&cls.sumFilter!=='__all__') students=students.filter(function(x){ return x.classroom_id===cls.sumFilter; });
-  var DIM=[['CTC','การคิดวิเคราะห์เชื่อมโยง','#0ea5e9','จับประเด็น เชื่อมเหตุ-ผล และเลือกหลักฐานมาสนับสนุน'],
-           ['STM','การคิดเชิงระบบ','#22c55e','มองภาพรวม เห็นความสัมพันธ์ของส่วนต่าง ๆ และผลกระทบต่อเนื่อง'],
-           ['CRT','การคิดสร้างสรรค์','#f59e0b','เสนอทางเลือกใหม่ที่ต่างไปจากเดิมและใช้ได้จริง'],
-           ['PRB','การแก้ปัญหา','#ef4444','นิยามปัญหา วางแผน ตัดสินใจ และประเมินผลของทางเลือก']];
-  var cs={CTC:[0,0],STM:[0,0],CRT:[0,0],PRB:[0,0]}, nv=0;
-  students.forEach(function(stu){
-    var t=clsStatOf(stu), v=t&&t.v2;
-    if(!v||v.dataStatus==='NO_DATA') return;
-    var got=false;
-    DIM.forEach(function(d){ var x=v.comp&&v.comp[d[0]];
-      if(x!=null){ cs[d[0]][0]+=x; cs[d[0]][1]++; got=true; } });
-    if(got) nv++;
-  });
-  var av=function(p){ return p[1]?Math.round(p[0]/p[1]*10)/10:null; };
-  var vals=DIM.map(function(d){ return av(cs[d[0]]); });
-  if(!nv) return '<div class="muted" style="font-size:12.5px;padding:10px 2px">ยังไม่มีผู้เรียนที่มีหลักฐานของการคิดขั้นสูงในห้องที่เลือก</div>';
-  var cx=92, cy=90, R=66, N4=4, i, pp;
-  var pt=function(i2,r2){ var ang=-Math.PI/2 + i2*2*Math.PI/N4; return [cx+r2*Math.cos(ang), cy+r2*Math.sin(ang)]; };
-  var rings=''; [0.25,0.5,0.75,1].forEach(function(f){ var pts=[]; for(i=0;i<N4;i++){ pp=pt(i,R*f); pts.push(pp[0].toFixed(1)+','+pp[1].toFixed(1)); } rings+='<polygon points="'+pts.join(' ')+'" fill="none" stroke="#e2e8f0" stroke-width="1"/>'; });
-  var axes=''; for(i=0;i<N4;i++){ pp=pt(i,R); axes+='<line x1="'+cx+'" y1="'+cy+'" x2="'+pp[0].toFixed(1)+'" y2="'+pp[1].toFixed(1)+'" stroke="#e2e8f0"/>'; }
-  var dpts=[], dots=''; for(i=0;i<N4;i++){ var v3=(vals[i]==null)?0:vals[i]; pp=pt(i,R*Math.max(0,Math.min(100,v3))/100); dpts.push(pp[0].toFixed(1)+','+pp[1].toFixed(1)); dots+='<circle cx="'+pp[0].toFixed(1)+'" cy="'+pp[1].toFixed(1)+'" r="3" fill="'+DIM[i][2]+'"/>'; }
-  var labels=''; for(i=0;i<N4;i++){ pp=pt(i,R+13); labels+='<text x="'+pp[0].toFixed(1)+'" y="'+pp[1].toFixed(1)+'" font-size="10" font-weight="700" fill="#475569" text-anchor="middle" dominant-baseline="middle">'+DIM[i][0]+'</text>'; }
-  var bar=function(v,clr){ var p=v==null?0:Math.max(0,Math.min(100,v));
-    return '<span style="display:inline-block;width:110px;background:#eef2f7;border-radius:999px;height:9px;position:relative;overflow:hidden;vertical-align:middle"><span style="position:absolute;left:0;top:0;bottom:0;width:'+p+'%;background:'+clr+'"></span></span>'; };
-  return '<div class="muted" style="font-size:12px;margin:2px 0 10px">ค่าเฉลี่ยของทั้งชั้น เต็มด้านละ 100 · สรุปจากผู้เรียน '+nv+' คนที่มีหลักฐาน · <b>ด้านที่เว้าเข้าคือด้านที่ควรเสริม</b><br>⛔ เป็นภาพรวมเพื่อการสอน ไม่ได้ใช้ตัดสินระดับของผู้เรียนคนใด</div>'+
-    '<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:10px 13px">'+
-      '<svg width="184" height="180">'+rings+axes+'<polygon points="'+dpts.join(' ')+'" fill="rgba(4,120,87,.15)" stroke="#047857" stroke-width="2"/>'+dots+labels+'</svg>'+
-      '<div style="display:flex;flex-direction:column;gap:7px;flex:1;min-width:210px">'+
-        DIM.map(function(d,i2){ return '<div style="font-size:12px"><div style="display:flex;align-items:center;gap:7px">'+
-          '<span style="width:9px;height:9px;border-radius:50%;background:'+d[2]+';display:inline-block;flex:none"></span>'+
-          '<span style="flex:1"><b style="color:'+d[2]+'">'+d[0]+'</b> '+esc(d[1])+'</span>'+
-          bar(vals[i2],d[2])+' <b style="color:'+d[2]+';min-width:34px;text-align:right;display:inline-block">'+(vals[i2]==null?'–':vals[i2])+'</b></div>'+
-          '<div class="muted" style="font-size:10.5px;margin-left:16px">'+esc(d[3])+' · มีหลักฐาน '+cs[d[0]][1]+' คน</div></div>'; }).join('')+
-      '</div></div>';
-}
-function clsOpenHtRadar(){
-  var old=document.getElementById('cls-htradar-modal'); if(old) old.remove();
-  var wrap=document.createElement('div');
-  wrap.id='cls-htradar-modal';
-  wrap.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:999;display:flex;align-items:flex-start;justify-content:center;padding:20px 12px;overflow:auto';
-  wrap.innerHTML='<div style="background:#fff;border-radius:14px;padding:16px 20px 20px;width:min(720px,96vw);box-shadow:0 20px 50px rgba(0,0,0,.3)">'+
-    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><b style="font-size:16px;flex:1">🧠 การคิดขั้นสูง — ภาพรวม 4 ด้านการคิดของทั้งชั้น</b>'+
-      '<button class="btn-ghost" style="padding:5px 14px" onclick="document.getElementById(\'cls-htradar-modal\').remove()">ปิด</button></div>'+
-    clsHtRadarHtml()+'</div>';
-  document.body.appendChild(wrap);
-}
+/* ════════ 🎓 [V.7.99.85 · มติครู 8 ก.ย. ดึก] ลบ "แผงเรดาร์ 4 ด้านการคิด" ทิ้งทั้งแผง ════════
+   ที่นี่เคยเป็น `clsHtRadarHtml()` + `clsOpenHtRadar()` (~50 บรรทัด) ที่เพิ่มเข้ามาใน `V.7.99.82`
+   ครูสั่ง: "เอาปุ่ม 4 ด้านการคิด ด้านหลังการคิดขั้นสูงออกไปเลย" ⇒ เคาะต่อว่า **ลบแผงทิ้งด้วย**
+   ⇒ ปุ่มนั้นเป็น **ทางเข้าเดียว** ของแผง ถ้าถอดปุ่มแล้วไม่ลบแผง จะได้โค้ดที่ไม่มีใครเข้าถึงได้
+      ซึ่งคือโรคเดียวกับหน้า Dashboard เก่า `page-v1/v2` ที่ถูกบังคับซ่อนมาตั้งแต่ `V.7.67`
+   ⛔ ห้ามเอากลับมาโดยไม่มีมติครูใหม่เป็นลายลักษณ์อักษร (มี guard คุมไว้ใน `build_repo.py`)
+   ℹ️ ตัวเลข 4 ด้านการคิด (CTC/STM/CRT/PRB) **ยังอยู่ครบ** ที่ไฟล์ CSV ส่งออก (`clsExportCsv` · .84)
+      และเอนจิน `hotsV2` ยังคำนวณเหมือนเดิมทุกอย่าง — รุ่นนี้ลบเฉพาะ "แผงแสดงผล" เท่านั้น */
 /* [ตามคำขอครู V.7.69 ข้อ 5] ตารางจำนวนนักเรียนรายระดับ (3·4·5·6) ของสมรรถนะหลักทั้ง 6 ด้าน
    ด้านที่ยังไม่มีหลักฐานพอ → นับไว้ในช่อง "ข้อมูลยังไม่พอ" · ด้านที่ระบบไม่ประเมิน → บอกตรง ๆ */
 function clsCore6MatrixHtml(students, htAvg, htN){
@@ -5882,9 +5835,9 @@ function clsCore6MatrixHtml(students, htAvg, htN){
     }
     return '<tr><td style="font-weight:700;color:'+c[2]+'">'+esc(c[1])+
         /* 🎓 [V.7.99.81] ถอดปุ่ม "รายละเอียด" ออก — มันเปิดแผง A·B·C·D เก่าที่ ADR-012 ยกเลิกตั้งแต่ .74
-           🎓 [V.7.99.82 · มติครู] แต่ **เรดาร์ 4 ด้านการคิดที่อยู่ในแผงนั้นเป็นของที่ ADR-012 รับรอง**
-              ⇒ ครูสั่งให้ทำแผงแยก "มีแต่เรดาร์ ไม่มี A·B·C·D" ⇒ ปุ่มใหม่ชี้ไปที่แผงสะอาดแทน */
-        (k==='HT'?' <button class="btn-ghost" style="padding:0 7px;font-size:11px" onclick="clsOpenHtRadar()">🧠 4 ด้านการคิด</button>':'')+'</td>'+
+           🎓 [V.7.99.85 · มติครู] ถอดปุ่ม "🧠 4 ด้านการคิด" ที่เพิ่มใน .82 ออกอีกปุ่ม และลบแผงปลายทางทิ้ง
+              ⇒ ช่องนี้เป็น **ชื่อสมรรถนะอย่างเดียว** ทั้ง 6 ด้านเท่ากันหมด ไม่มีปุ่มใด ๆ ต่อท้าย */
+        '</td>'+
       LV.map(function(L){ var v=a[L];
         return '<td style="text-align:center;font-weight:800;color:'+(v?CLS_LV_CLR[L]:'#cbd5e1')+'">'+v+'</td>'; }).join('')+
       '<td style="text-align:center;color:#94a3b8">'+a.partial+'</td></tr>';
@@ -6417,7 +6370,7 @@ function clsCmpWriteFinal(sid,comps,notes,stEl,okMsg){
    มันคือ **เอกสารของสูตรถ่วงน้ำหนัก A20·B30·C25·D25 ทั้งใบ**: ตารางน้ำหนัก 4 แหล่ง ·
    เงื่อนไข "ระดับ 6 ต้องมีหลักฐานครบทั้ง 4 แหล่ง" · และประโยค "รวม 100 คะแนน"
    ⛔ ทั้งหมดถูกยกเลิกโดย `ADR-012` (มติครู 29 ส.ค.) ตั้งแต่ `V.7.99.74`
-   ✅ ส่วนที่ยังใช้ได้ (เรดาร์ 4 ด้านการคิด) ถูกยกไปเป็น `clsHtRadarHtml()` แล้วใน `V.7.99.82` */
+   ℹ️ [V.7.99.85] เรดาร์ที่เคยยกออกมาเป็น `clsHtRadarHtml()` ใน `.82` ถูกลบทิ้งแล้วตามมติครู */
 
 function clsSummaryHtml(){
   /* [ตามคำขอครู] ตัวกรองสรุปรวม: ทุกห้อง หรือเจาะรายห้อง */
@@ -7545,16 +7498,28 @@ function clsSaveFeatured(i){
 function clsExportCsv(){
   var rooms=cls.rooms||[];
   var pick=(cls.openScores||cls.open||(cls.sumFilter&&cls.sumFilter!=='__all__'?cls.sumFilter:''))||'';
-  var rows=[['โรงเรียน','ห้องเรียน','ปีการศึกษา','เลขที่','ชื่อ','นามสกุล','ชื่อในเกม','คะแนนเก็บ','คะแนนสอบ','A20','B30','C25','D25','รวม100','ระดับ','CTC','STM','CRT','PRB','สถานะข้อมูล']];
+  /* 🔴 [V.7.99.84 · ครูตอบ 8 ก.ย. ค่ำ "ไม่ได้ใช้ที่เกี่ยวกับ A B C D แล้ว"]
+     ไฟล์นี้เป็นจุดสุดท้ายที่ครูเปิดเจอสูตรเก่าได้จริง และมันหนักกว่าที่คิด:
+     ① คอลัมน์ `A20 B30 C25 D25 รวม100` = สูตรถ่วงน้ำหนักที่ `ADR-012` ยกเลิกตั้งแต่ `.74`
+     ② 🔴🔴 คอลัมน์ `ระดับ` ส่งออก `v.level` ซึ่งเป็น **ระดับที่คิดจากสูตรเก่า**
+        ⇒ **ไฟล์ที่ครูเปิด ขัดกับตัวเลขบนหน้าจอ** (จอใช้ `c6.HT` ตาม ADR-012 ตั้งแต่ `.74`) โดยไม่มีใครสังเกต
+     ⇒ แก้ให้ส่งออก **ร้อยละและระดับของการคิดขั้นสูงตามเกณฑ์ปัจจุบัน** และคง 4 ด้านการคิดไว้ (ฐานที่ ADR-012 ใช้จริง)
+     ⛔ ไม่มีหลักฐาน = เว้นว่าง ⛔ ห้ามเดา ห้ามใส่ 0 (กฎ ก2) */
+  var rows=[['โรงเรียน','ห้องเรียน','ปีการศึกษา','เลขที่','ชื่อ','นามสกุล','ชื่อในเกม','คะแนนเก็บ','คะแนนสอบ','การคิดขั้นสูง (%)','ระดับการคิดขั้นสูง','CTC','STM','CRT','PRB','สถานะข้อมูล']];
   var n=0;
   (cls.students||[]).forEach(function(stu){
     if(pick&&stu.classroom_id!==pick) return;
     var r=rooms.filter(function(x){return x.id===stu.classroom_id;})[0]||{};
     var sc=(cls.schools||[]).filter(function(x){return x.id===r.school_id;})[0];
     var t=clsStatOf(stu), v=t.v2||{};
+    /* [V.7.99.84] อ่านผลของการคิดขั้นสูงจาก **เอนจินเดียวกับที่หน้าจอใช้** (`c6.HT`) ⛔ ไม่ใช่ `v.level` ของสูตรเก่า
+       ⇒ ไฟล์ที่ส่งออกกับตัวเลขบนจอ มาจากแหล่งเดียวกันเสมอ */
+    var ht=(t.c6&&t.c6.HT)||{};
+    var htPct=(ht.st==='score'&&ht.pct!=null)?ht.pct:null;
+    var htLv =(ht.st==='score'&&ht.level!=null)?ht.level:null;
     var f=function(x){ return (x==null||x==='')?'':x; };
     rows.push([sc?sc.name:'', r.name||'', r.academic_year||'', stu.student_number||'', stu.first_name||'', stu.last_name||'',
-      stu.character_name||'', f(t.collected), f(t.boss), f(v.A), f(v.B), f(v.C), f(v.D), f(v.total), f(v.level),
+      stu.character_name||'', f(t.collected), f(t.boss), f(htPct), f(htLv),
       f(v.comp&&v.comp.CTC), f(v.comp&&v.comp.STM), f(v.comp&&v.comp.CRT), f(v.comp&&v.comp.PRB), v.dataStatus||'']);
     n++;
   });
